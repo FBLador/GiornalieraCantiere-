@@ -11,4 +11,3 @@ import androidx.room.RoomDatabase
 abstract class AppDatabase : RoomDatabase() {
     abstract fun exampleDao(): ExampleDao
 }
-  
