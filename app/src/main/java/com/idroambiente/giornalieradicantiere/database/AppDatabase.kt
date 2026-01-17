@@ -3,6 +3,15 @@ package com.idroambiente.giornalieradicantiere.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.idroambiente.giornalieradicantiere.database.dao.AttrezzaturaDao
+import com.idroambiente.giornalieradicantiere.database.dao.AttrezzaturaGiornalieraDao
+import com.idroambiente.giornalieradicantiere.database.dao.CantiereDao
+import com.idroambiente.giornalieradicantiere.database.dao.CommessaDao
+import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraDao
+import com.idroambiente.giornalieradicantiere.database.dao.MezzoDao
+import com.idroambiente.giornalieradicantiere.database.dao.MezzoGiornalieraDao
+import com.idroambiente.giornalieradicantiere.database.dao.PersonaleDao
+import com.idroambiente.giornalieradicantiere.database.dao.PersonaleGiornalieraDao
 import com.idroambiente.giornalieradicantiere.database.entities.Attrezzatura
 import com.idroambiente.giornalieradicantiere.database.entities.AttrezzaturaGiornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.Cantiere
@@ -32,4 +41,13 @@ import com.idroambiente.giornalieradicantiere.database.entities.PersonaleGiornal
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun exampleDao(): ExampleDao
+    abstract fun commessaDao(): CommessaDao
+    abstract fun cantiereDao(): CantiereDao
+    abstract fun giornalieraDao(): GiornalieraDao
+    abstract fun personaleDao(): PersonaleDao
+    abstract fun personaleGiornalieraDao(): PersonaleGiornalieraDao
+    abstract fun mezzoDao(): MezzoDao
+    abstract fun mezzoGiornalieraDao(): MezzoGiornalieraDao
+    abstract fun attrezzaturaDao(): AttrezzaturaDao
+    abstract fun attrezzaturaGiornalieraDao(): AttrezzaturaGiornalieraDao
 }
