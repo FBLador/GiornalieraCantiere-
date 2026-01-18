@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -27,7 +29,9 @@ import androidx.compose.ui.Modifier
 @Composable
 fun ImpostazioniScreen(
     onNavigateBack: () -> Unit = {},
-    onNavigateToPersonaleList: () -> Unit = {}
+    onNavigateToPersonaleList: () -> Unit = {},
+    onNavigateToMezzoList: () -> Unit = {},
+    onNavigateToAttrezzaturaList: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -61,6 +65,34 @@ fun ImpostazioniScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onNavigateToPersonaleList() }
+            )
+            HorizontalDivider()
+
+            ListItem(
+                headlineContent = { Text("Lista mezzi") },
+                leadingContent = {
+                    Icon(Icons.Default.Build, contentDescription = null)
+                },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToMezzoList() }
+            )
+            HorizontalDivider()
+
+            ListItem(
+                headlineContent = { Text("Lista attrezzature") },
+                leadingContent = {
+                    Icon(Icons.Default.Settings, contentDescription = null)
+                },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToAttrezzaturaList() }
             )
             HorizontalDivider()
         }

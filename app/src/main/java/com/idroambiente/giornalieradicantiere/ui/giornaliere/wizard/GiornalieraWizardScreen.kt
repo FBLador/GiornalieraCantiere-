@@ -39,6 +39,8 @@ fun GiornalieraWizardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val personaleList by viewModel.personaleList.collectAsState()
+    val mezzoList by viewModel.mezzoList.collectAsState()
+    val attrezzaturaList by viewModel.attrezzaturaList.collectAsState()
 
     LaunchedEffect(uiState.saveCompleted) {
         if (uiState.saveCompleted) {
@@ -89,7 +91,21 @@ fun GiornalieraWizardScreen(
                             viewModel.updatePersonaleData(personaleId, data)
                         }
                     )
-                    1, 2, 3 -> PlaceholderStepContent(
+                    1 -> MezzoStepContent(
+                        mezzoList = mezzoList,
+                        mezzoSelections = uiState.mezzoSelections,
+                        onMezzoDataChanged = { mezzoId, data ->
+                            viewModel.updateMezzoData(mezzoId, data)
+                        }
+                    )
+                    2 -> AttrezzaturaStepContent(
+                        attrezzaturaList = attrezzaturaList,
+                        attrezzaturaSelections = uiState.attrezzaturaSelections,
+                        onAttrezzaturaDataChanged = { attrezzaturaId, data ->
+                            viewModel.updateAttrezzaturaData(attrezzaturaId, data)
+                        }
+                    )
+                    3 -> PlaceholderStepContent(
                         stepIndex = uiState.currentStep
                     )
                 }

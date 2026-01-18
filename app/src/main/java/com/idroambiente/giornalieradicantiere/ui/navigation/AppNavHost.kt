@@ -10,7 +10,9 @@ import androidx.navigation.navArgument
 import com.idroambiente.giornalieradicantiere.ui.commesse.CommesseScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.GiornalieraWizardScreen
+import com.idroambiente.giornalieradicantiere.ui.impostazioni.AttrezzaturaListScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.ImpostazioniScreen
+import com.idroambiente.giornalieradicantiere.ui.impostazioni.MezzoListScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.PersonaleListScreen
 
 @Composable
@@ -66,12 +68,30 @@ fun AppNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToPersonaleList = {
                     navController.navigate(Routes.PERSONALE_LIST)
+                },
+                onNavigateToMezzoList = {
+                    navController.navigate(Routes.MEZZO_LIST)
+                },
+                onNavigateToAttrezzaturaList = {
+                    navController.navigate(Routes.ATTREZZATURA_LIST)
                 }
             )
         }
 
         composable(Routes.PERSONALE_LIST) {
             PersonaleListScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.MEZZO_LIST) {
+            MezzoListScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.ATTREZZATURA_LIST) {
+            AttrezzaturaListScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
