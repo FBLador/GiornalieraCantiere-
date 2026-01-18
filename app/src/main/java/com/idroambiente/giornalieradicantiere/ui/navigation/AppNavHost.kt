@@ -9,6 +9,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.idroambiente.giornalieradicantiere.ui.commesse.CommesseScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
+import com.idroambiente.giornalieradicantiere.ui.impostazioni.ImpostazioniScreen
+import com.idroambiente.giornalieradicantiere.ui.impostazioni.PersonaleListScreen
 
 @Composable
 fun AppNavHost(
@@ -27,6 +29,9 @@ fun AppNavHost(
             CommesseScreen(
                 onNavigateToCommessa = { commessaId ->
                     navController.navigate(Routes.giornaliereList(commessaId))
+                },
+                onNavigateToImpostazioni = {
+                    navController.navigate(Routes.IMPOSTAZIONI)
                 }
             )
         }
@@ -40,6 +45,21 @@ fun AppNavHost(
                 onNavigateToGiornaliera = { giornalieraId ->
                     // TODO: Navigare a dettaglio giornaliera
                 }
+            )
+        }
+
+        composable(Routes.IMPOSTAZIONI) {
+            ImpostazioniScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPersonaleList = {
+                    navController.navigate(Routes.PERSONALE_LIST)
+                }
+            )
+        }
+
+        composable(Routes.PERSONALE_LIST) {
+            PersonaleListScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

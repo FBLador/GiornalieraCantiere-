@@ -24,6 +24,8 @@ data class Giornaliera(
     val data: Long,
     val stato: StatoGiornaliera = StatoGiornaliera.BOZZA,
     val note: String? = null,
+    val dpiIdonei: Boolean = false,
+    val presaVisionePOS: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

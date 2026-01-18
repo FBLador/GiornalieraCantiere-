@@ -32,7 +32,5 @@ data class PersonaleGiornaliera(
     val oreLavoro: Float = 0f,
     val inizioTurno: Long,
     val fineTurno: Long,
-    val pernotto: Boolean = false,
-    val dpiIdonei: Boolean = false,
-    val presaVisionePOS: Boolean = false
+    val pernotto: Boolean = false
 )

@@ -5,9 +5,11 @@ import com.idroambiente.giornalieradicantiere.database.ExampleRepository
 import com.idroambiente.giornalieradicantiere.database.dao.CantiereDao
 import com.idroambiente.giornalieradicantiere.database.dao.CommessaDao
 import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraDao
+import com.idroambiente.giornalieradicantiere.database.dao.PersonaleDao
 import com.idroambiente.giornalieradicantiere.database.repository.CantiereRepository
 import com.idroambiente.giornalieradicantiere.database.repository.CommessaRepository
 import com.idroambiente.giornalieradicantiere.database.repository.GiornalieraRepository
+import com.idroambiente.giornalieradicantiere.database.repository.PersonaleRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -48,5 +50,13 @@ object RepositoryModule {
         giornalieraDao: GiornalieraDao
     ): GiornalieraRepository {
         return GiornalieraRepository(giornalieraDao)
+    }
+
+    @Provides
+    @Singleton
+    fun providePersonaleRepository(
+        personaleDao: PersonaleDao
+    ): PersonaleRepository {
+        return PersonaleRepository(personaleDao)
     }
 }
