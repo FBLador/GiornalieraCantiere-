@@ -3,8 +3,10 @@ package com.idroambiente.giornalieradicantiere.ui.commesse
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.idroambiente.giornalieradicantiere.database.entities.Cantiere
 import com.idroambiente.giornalieradicantiere.database.entities.Commessa
 import com.idroambiente.giornalieradicantiere.database.entities.StatoCommessa
+import com.idroambiente.giornalieradicantiere.database.repository.CantiereRepository
 import com.idroambiente.giornalieradicantiere.database.repository.CommessaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +19,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CommesseViewModel @Inject constructor(
-    private val commessaRepository: CommessaRepository
+    private val commessaRepository: CommessaRepository,
+    private val cantiereRepository: CantiereRepository
 ) : ViewModel() {
 
     companion object {
@@ -55,8 +58,17 @@ class CommesseViewModel @Inject constructor(
                     indirizzo = indirizzo,
                     stato = StatoCommessa.APERTA
                 )
-                commessaRepository.insert(commessa)
-                Log.d(TAG, "Commessa creata: $nome")
+                val commessaId = commessaRepository.insert(commessa)
+                Log.d(TAG, "Commessa creata: $nome (id: $commessaId)")
+
+                val cantiere = Cantiere(
+                    commessaId = commessaId,
+                    nome = nome,
+                    indirizzo = indirizzo
+                )
+                val cantiereId = cantiereRepository.insert(cantiere)
+                Log.d(TAG, "Cantiere creato automaticamente per commessa $commessaId (cantiereId: $cantiereId)")
+
                 hideCreateDialog()
             } catch (e: Exception) {
                 Log.e(TAG, "Errore creazione commessa", e)
