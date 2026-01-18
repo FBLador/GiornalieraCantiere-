@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.idroambiente.giornalieradicantiere.ui.commesse.CommesseScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
+import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.GiornalieraWizardScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.ImpostazioniScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.PersonaleListScreen
 
@@ -44,7 +45,19 @@ fun AppNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToGiornaliera = { giornalieraId ->
                     // TODO: Navigare a dettaglio giornaliera
+                },
+                onNavigateToWizard = { cantiereId ->
+                    navController.navigate(Routes.giornalieraWizard(cantiereId))
                 }
+            )
+        }
+
+        composable(
+            route = Routes.GIORNALIERA_WIZARD,
+            arguments = listOf(navArgument("cantiereId") { type = NavType.LongType })
+        ) {
+            GiornalieraWizardScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

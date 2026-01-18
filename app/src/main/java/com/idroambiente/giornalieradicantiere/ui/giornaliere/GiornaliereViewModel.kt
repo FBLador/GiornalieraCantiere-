@@ -41,6 +41,7 @@ class GiornaliereViewModel @Inject constructor(
     val commessa: StateFlow<Commessa?> = _commessa.asStateFlow()
 
     private val _cantiereId = MutableStateFlow<Long?>(null)
+    val cantiereId: StateFlow<Long?> = _cantiereId.asStateFlow()
 
     val giornaliere: StateFlow<List<Giornaliera>> = _cantiereId
         .filterNotNull()

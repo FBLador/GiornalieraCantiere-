@@ -44,10 +44,12 @@ import java.util.Locale
 fun GiornaliereScreen(
     viewModel: GiornaliereViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
-    onNavigateToGiornaliera: (Long) -> Unit = {}
+    onNavigateToGiornaliera: (Long) -> Unit = {},
+    onNavigateToWizard: (Long) -> Unit = {}
 ) {
     val commessa by viewModel.commessa.collectAsState()
     val giornaliere by viewModel.giornaliere.collectAsState()
+    val cantiereId by viewModel.cantiereId.collectAsState()
 
     Scaffold(
         topBar = {
@@ -68,10 +70,12 @@ fun GiornaliereScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.createGiornaliera() }
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Nuova Giornaliera")
+            cantiereId?.let { id ->
+                FloatingActionButton(
+                    onClick = { onNavigateToWizard(id) }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Nuova Giornaliera")
+                }
             }
         }
     ) { paddingValues ->

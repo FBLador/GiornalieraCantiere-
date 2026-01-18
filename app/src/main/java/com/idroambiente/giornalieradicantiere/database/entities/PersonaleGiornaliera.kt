@@ -28,9 +28,11 @@ data class PersonaleGiornaliera(
     val id: Long = 0,
     val giornalieraId: Long,
     val personaleId: Long,
-    val oreViaggio: Float = 0f,
+    val presente: Boolean = true,
+    val oreViaggioAndata: Float = 0f,
+    val oreViaggioRitorno: Float = 0f,
     val oreLavoro: Float = 0f,
-    val inizioTurno: Long,
-    val fineTurno: Long,
+    val inizioTurno: Long = 0L,
+    val fineTurno: Long = 0L,
     val pernotto: Boolean = false
 )
