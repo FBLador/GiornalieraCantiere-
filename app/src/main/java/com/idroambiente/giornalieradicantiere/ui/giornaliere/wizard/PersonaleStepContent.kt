@@ -47,9 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.idroambiente.giornalieradicantiere.database.entities.Personale
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Enum for the two phases of personnel data entry
@@ -107,8 +104,6 @@ private fun PersonaleViewMode(
     personaleSelections: Map<Long, PersonaleFormData>,
     modifier: Modifier = Modifier
 ) {
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.ITALY)
-
     val personalePresente = personaleList.filter { personale ->
         personaleSelections[personale.id]?.presente == true
     }
@@ -176,8 +171,8 @@ private fun PersonaleViewMode(
                             )
 
                             // Turno e pernotto
-                            val inizioTurnoStr = if (formData.inizioTurno > 0) timeFormat.format(Date(formData.inizioTurno)) else "--:--"
-                            val fineTurnoStr = if (formData.fineTurno > 0) timeFormat.format(Date(formData.fineTurno)) else "--:--"
+                            val inizioTurnoStr = if (formData.inizioTurno > 0) formatTimeFromMillis(formData.inizioTurno) else "--:--"
+                            val fineTurnoStr = if (formData.fineTurno > 0) formatTimeFromMillis(formData.fineTurno) else "--:--"
                             val pernottoStr = if (formData.pernotto) " | Pernotto" else ""
 
                             Text(
@@ -240,6 +235,7 @@ private fun formatOre(ore: Float): String {
         "${ore}h"
     }
 }
+
 
 @Composable
 private fun PersonaleEditMode(
@@ -600,8 +596,7 @@ private fun TimePickerField(
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.ITALY)
-    val displayValue = if (value > 0) timeFormat.format(Date(value)) else ""
+    val displayValue = if (value > 0) formatTimeFromMillis(value) else ""
 
     // Extract hours and minutes from current value
     val currentHour = if (value > 0) ((value / 1000 / 60 / 60) % 24).toInt() else 8

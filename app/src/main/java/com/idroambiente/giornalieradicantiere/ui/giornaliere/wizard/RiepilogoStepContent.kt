@@ -22,8 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.idroambiente.giornalieradicantiere.database.entities.Attrezzatura
 import com.idroambiente.giornalieradicantiere.database.entities.Mezzo
 import com.idroambiente.giornalieradicantiere.database.entities.Personale
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 data class RiepilogoData(
@@ -47,8 +45,6 @@ fun RiepilogoStepContent(
     riepilogo: RiepilogoData,
     modifier: Modifier = Modifier
 ) {
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.ITALY)
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -115,7 +111,7 @@ fun RiepilogoStepContent(
                                 }
                                 if (data.inizioTurno > 0 && data.fineTurno > 0) {
                                     Text(
-                                        text = "Turno: ${timeFormat.format(Date(data.inizioTurno))} - ${timeFormat.format(Date(data.fineTurno))}",
+                                        text = "Turno: ${formatTimeFromMillis(data.inizioTurno)} - ${formatTimeFromMillis(data.fineTurno)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -285,3 +281,4 @@ private fun formatKm(km: Float): String {
         String.format(Locale.ITALY, "%.1f", km)
     }
 }
+
