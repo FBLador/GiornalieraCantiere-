@@ -17,14 +17,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,7 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -52,6 +50,14 @@ import com.idroambiente.giornalieradicantiere.database.entities.Personale
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/**
+ * Enum for the two phases of personnel data entry
+ */
+private enum class PersonaleEditPhase {
+    SELECTION,  // Phase 1: Select present personnel
+    DATA_ENTRY  // Phase 2: Enter data using the unified form
+}
 
 @Composable
 fun PersonaleStepContent(
@@ -242,214 +248,345 @@ private fun PersonaleEditMode(
     onPersonaleDataChanged: (Long, PersonaleFormData) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Calculate the list of present personale for copy functionality
-    val presentPersonale = personaleList.filter {
-        personaleSelections[it.id]?.presente == true
+    // Determine initial phase: if there are already present people with data, go to DATA_ENTRY
+    val hasExistingData = personaleSelections.any {
+        it.value.presente && it.value.oreLavoro > 0
+    }
+    var currentPhase by remember {
+        mutableStateOf(if (hasExistingData) PersonaleEditPhase.DATA_ENTRY else PersonaleEditPhase.SELECTION)
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item { Spacer(modifier = Modifier.height(8.dp)) }
-        items(personaleList, key = { it.id }) { personale ->
-            val formData = personaleSelections[personale.id] ?: PersonaleFormData()
-
-            // Find the index in the present list and the person above
-            val indexInPresent = presentPersonale.indexOfFirst { it.id == personale.id }
-            val personaleAbove = if (indexInPresent > 0) presentPersonale[indexInPresent - 1] else null
-            val personaleAboveData = personaleAbove?.let { personaleSelections[it.id] }
-
-            // Other present personale (excluding current)
-            val otherPresenti = presentPersonale.filter { it.id != personale.id }
-
-            PersonaleCard(
-                personale = personale,
-                formData = formData,
-                onFormDataChanged = { newData ->
-                    onPersonaleDataChanged(personale.id, newData)
-                },
-                personaleAbove = personaleAbove,
-                personaleAboveData = personaleAboveData,
-                otherPresenti = otherPresenti,
-                allSelections = personaleSelections,
-                onCopyFrom = { sourceId ->
-                    personaleSelections[sourceId]?.let { sourceData ->
-                        onPersonaleDataChanged(personale.id, formData.copy(
-                            oreViaggioAndata = sourceData.oreViaggioAndata,
-                            oreViaggioRitorno = sourceData.oreViaggioRitorno,
-                            inizioTurno = sourceData.inizioTurno,
-                            fineTurno = sourceData.fineTurno,
-                            oreLavoro = sourceData.oreLavoro,
-                            pernotto = sourceData.pernotto
-                        ))
-                    }
-                }
+    when (currentPhase) {
+        PersonaleEditPhase.SELECTION -> {
+            PersonaleSelectionPhase(
+                personaleList = personaleList,
+                personaleSelections = personaleSelections,
+                onPersonaleDataChanged = onPersonaleDataChanged,
+                onProceed = { currentPhase = PersonaleEditPhase.DATA_ENTRY },
+                modifier = modifier
             )
         }
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+        PersonaleEditPhase.DATA_ENTRY -> {
+            PersonaleDataEntryPhase(
+                personaleList = personaleList,
+                personaleSelections = personaleSelections,
+                onPersonaleDataChanged = onPersonaleDataChanged,
+                onBack = { currentPhase = PersonaleEditPhase.SELECTION },
+                modifier = modifier
+            )
+        }
     }
 }
 
+/**
+ * Phase 1: Selection of present personnel (checkbox only)
+ */
 @Composable
-private fun PersonaleCard(
-    personale: Personale,
-    formData: PersonaleFormData,
-    onFormDataChanged: (PersonaleFormData) -> Unit,
-    personaleAbove: Personale? = null,
-    personaleAboveData: PersonaleFormData? = null,
-    otherPresenti: List<Personale> = emptyList(),
-    allSelections: Map<Long, PersonaleFormData> = emptyMap(),
-    onCopyFrom: (Long) -> Unit = {}
+private fun PersonaleSelectionPhase(
+    personaleList: List<Personale>,
+    personaleSelections: Map<Long, PersonaleFormData>,
+    onPersonaleDataChanged: (Long, PersonaleFormData) -> Unit,
+    onProceed: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val alpha = if (formData.presente) 1f else 0.5f
+    val presentCount = personaleSelections.count { it.value.presente }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(alpha),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = if (formData.presente) {
-            CardDefaults.cardColors()
-        } else {
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+    Column(modifier = modifier.fillMaxSize()) {
+        // Header
+        Text(
+            text = "Seleziona i presenti",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(16.dp)
+        )
+
+        // People list (checkbox + name)
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(personaleList, key = { it.id }) { personale ->
+                val formData = personaleSelections[personale.id] ?: PersonaleFormData()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onPersonaleDataChanged(
+                                personale.id,
+                                formData.copy(presente = !formData.presente)
+                            )
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = formData.presente,
+                        onCheckedChange = { checked ->
+                            onPersonaleDataChanged(personale.id, formData.copy(presente = checked))
+                        }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "${personale.nome} ${personale.cognome}",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
         }
-    ) {
+
+        // Fixed footer
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Text(
+                text = "Selezionati: $presentCount person${if (presentCount == 1) "a" else "e"}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onProceed,
+                enabled = presentCount > 0,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Prosegui ai dettagli")
+            }
+        }
+    }
+}
+
+/**
+ * Phase 2: Data entry using the unified form
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PersonaleDataEntryPhase(
+    personaleList: List<Personale>,
+    personaleSelections: Map<Long, PersonaleFormData>,
+    onPersonaleDataChanged: (Long, PersonaleFormData) -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Form state
+    var oreViaggioAndata by remember { mutableStateOf(0f) }
+    var oreViaggioRitorno by remember { mutableStateOf(0f) }
+    var inizioTurno by remember { mutableStateOf(0L) }
+    var fineTurno by remember { mutableStateOf(0L) }
+    var oreLavoro by remember { mutableStateOf(0f) }
+    var pernotto by remember { mutableStateOf(false) }
+
+    // Get list of present people
+    val presenti = personaleList.filter { personaleSelections[it.id]?.presente == true }
+
+    // Selected people for this application (default: those without data yet)
+    var selectedIds by remember {
+        mutableStateOf(
+            presenti.filter { p ->
+                val data = personaleSelections[p.id]
+                data == null || data.oreLavoro == 0f
+            }.map { it.id }.toSet()
+        )
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        // Header with back button
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+            Spacer(Modifier.width(4.dp))
+            Text("Modifica Presenti")
+        }
+
+        // Scrollable content
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            Text(
+                text = "Compila Dati Personale",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // Ore Viaggio
+            Text(
+                text = "Ore Viaggio",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                DecimalTextField(
+                    value = oreViaggioAndata,
+                    onValueChange = { oreViaggioAndata = it },
+                    label = "Andata",
+                    modifier = Modifier.weight(1f)
+                )
+                DecimalTextField(
+                    value = oreViaggioRitorno,
+                    onValueChange = { oreViaggioRitorno = it },
+                    label = "Ritorno",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Turno
+            Text(
+                text = "Turno",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TimePickerField(
+                    value = inizioTurno,
+                    onValueChange = { inizioTurno = it },
+                    label = "Inizio",
+                    modifier = Modifier.weight(1f)
+                )
+                Text("-")
+                TimePickerField(
+                    value = fineTurno,
+                    onValueChange = { fineTurno = it },
+                    label = "Fine",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Ore Lavoro
+            DecimalTextField(
+                value = oreLavoro,
+                onValueChange = { oreLavoro = it },
+                label = "Ore Lavoro (esclusa pausa pranzo)",
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            // Pernotto
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${personale.nome} ${personale.cognome}",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "Pernotto",
+                    style = MaterialTheme.typography.bodyMedium
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Presente",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                Switch(
+                    checked = pernotto,
+                    onCheckedChange = { pernotto = it }
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+
+            // People selection header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Applica a",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Row {
+                    TextButton(onClick = { selectedIds = presenti.map { it.id }.toSet() }) {
+                        Text("Tutti")
+                    }
+                    TextButton(onClick = { selectedIds = emptySet() }) {
+                        Text("Nessuno")
+                    }
+                }
+            }
+
+            // Checkbox list with status indicators
+            presenti.forEach { personale ->
+                val isSelected = selectedIds.contains(personale.id)
+                val hasData = (personaleSelections[personale.id]?.oreLavoro ?: 0f) > 0
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedIds = if (isSelected) selectedIds - personale.id
+                            else selectedIds + personale.id
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Checkbox(
-                        checked = formData.presente,
+                        checked = isSelected,
                         onCheckedChange = { checked ->
-                            onFormDataChanged(formData.copy(presente = checked))
+                            selectedIds = if (checked) selectedIds + personale.id
+                            else selectedIds - personale.id
                         }
                     )
-                }
-            }
-
-            if (formData.presente) {
-                // Show "Copy from..." button if there are other people to copy from
-                if (personaleAbove != null || otherPresenti.isNotEmpty()) {
-                    CopyFromButton(
-                        personaleAbove = personaleAbove,
-                        personaleAboveData = personaleAboveData,
-                        otherPresenti = otherPresenti,
-                        allSelections = allSelections,
-                        onCopyFrom = onCopyFrom
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = "Ore Viaggio",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    DecimalTextField(
-                        value = formData.oreViaggioAndata,
-                        onValueChange = { value ->
-                            onFormDataChanged(formData.copy(oreViaggioAndata = value))
-                        },
-                        label = "Andata",
-                        modifier = Modifier.weight(1f)
-                    )
-                    DecimalTextField(
-                        value = formData.oreViaggioRitorno,
-                        onValueChange = { value ->
-                            onFormDataChanged(formData.copy(oreViaggioRitorno = value))
-                        },
-                        label = "Ritorno",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Turno",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TimePickerField(
-                        value = formData.inizioTurno,
-                        onValueChange = { time ->
-                            onFormDataChanged(formData.copy(inizioTurno = time))
-                        },
-                        label = "Inizio",
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text("-")
-                    TimePickerField(
-                        value = formData.fineTurno,
-                        onValueChange = { time ->
-                            onFormDataChanged(formData.copy(fineTurno = time))
-                        },
-                        label = "Fine",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                DecimalTextField(
-                    value = formData.oreLavoro,
-                    onValueChange = { value ->
-                        onFormDataChanged(formData.copy(oreLavoro = value))
-                    },
-                    label = "Ore Lavoro (esclusa pausa pranzo)",
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Pernotto",
+                        text = "${personale.nome} ${personale.cognome}",
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Switch(
-                        checked = formData.pernotto,
-                        onCheckedChange = { checked ->
-                            onFormDataChanged(formData.copy(pernotto = checked))
-                        }
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = if (hasData) "✓ compilato" else "○ da compilare",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (hasData) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // Apply button
+        Button(
+            onClick = {
+                val formData = PersonaleFormData(
+                    presente = true,
+                    oreViaggioAndata = oreViaggioAndata,
+                    oreViaggioRitorno = oreViaggioRitorno,
+                    inizioTurno = inizioTurno,
+                    fineTurno = fineTurno,
+                    oreLavoro = oreLavoro,
+                    pernotto = pernotto
+                )
+                selectedIds.forEach { personId ->
+                    onPersonaleDataChanged(personId, formData)
+                }
+                // Deselect those just compiled
+                selectedIds = emptySet()
+            },
+            enabled = selectedIds.isNotEmpty(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text("Applica a ${selectedIds.size} person${if (selectedIds.size == 1) "a" else "e"}")
         }
     }
 }
@@ -561,80 +698,3 @@ private fun DecimalTextField(
     )
 }
 
-@Composable
-private fun CopyFromButton(
-    personaleAbove: Personale?,
-    personaleAboveData: PersonaleFormData?,
-    otherPresenti: List<Personale>,
-    allSelections: Map<Long, PersonaleFormData>,
-    onCopyFrom: (Long) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    // Filter other present people who have some data filled in
-    val altriConDati = otherPresenti.filter { p ->
-        val data = allSelections[p.id]
-        data != null && (data.oreLavoro > 0 || data.inizioTurno > 0)
-    }
-
-    // Only show if there's someone above or others with data
-    val hasPersonaleAboveWithData = personaleAbove != null && personaleAboveData != null &&
-            (personaleAboveData.oreLavoro > 0 || personaleAboveData.inizioTurno > 0)
-
-    if (!hasPersonaleAboveWithData && altriConDati.isEmpty()) {
-        return
-    }
-
-    Box {
-        TextButton(onClick = { expanded = true }) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.List,
-                contentDescription = null,
-                modifier = Modifier.height(18.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text("Copia da...")
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            // Quick option "Copy from above"
-            if (hasPersonaleAboveWithData && personaleAbove != null) {
-                DropdownMenuItem(
-                    text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Copia da sopra (${personaleAbove.nome})")
-                        }
-                    },
-                    onClick = {
-                        onCopyFrom(personaleAbove.id)
-                        expanded = false
-                    }
-                )
-
-                if (altriConDati.isNotEmpty()) {
-                    HorizontalDivider()
-                }
-            }
-
-            // List of other present people with filled data
-            altriConDati.forEach { p ->
-                DropdownMenuItem(
-                    text = { Text("${p.nome} ${p.cognome}") },
-                    onClick = {
-                        onCopyFrom(p.id)
-                        expanded = false
-                    }
-                )
-            }
-        }
-    }
-}
