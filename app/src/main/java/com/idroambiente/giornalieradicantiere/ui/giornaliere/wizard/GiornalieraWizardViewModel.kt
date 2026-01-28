@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -54,7 +55,11 @@ data class WizardUiState(
     val mezzoSelections: Map<Long, MezzoFormData> = emptyMap(),
     val attrezzaturaSelections: Map<Long, AttrezzaturaFormData> = emptyMap(),
     val isSaving: Boolean = false,
-    val saveCompleted: Boolean = false
+    val saveCompleted: Boolean = false,
+    val isEditMode: Boolean = false,
+    val giornaliera: Giornaliera? = null,
+    val isLoading: Boolean = false,
+    val riepilogo: RiepilogoData = RiepilogoData()
 )
 
 @HiltViewModel
@@ -70,6 +75,9 @@ class GiornalieraWizardViewModel @Inject constructor(
 ) : ViewModel() {
 
     val cantiereId: Long = savedStateHandle.get<Long>("cantiereId") ?: 0L
+    val giornalieraId: Long? = savedStateHandle.get<Long>("giornalieraId")?.takeIf { it != 0L }
+
+    val isDetailMode: Boolean = giornalieraId != null
 
     val personaleList: StateFlow<List<Personale>> = personaleRepository.getAll()
         .stateIn(
@@ -96,6 +104,14 @@ class GiornalieraWizardViewModel @Inject constructor(
     val uiState: StateFlow<WizardUiState> = _uiState.asStateFlow()
 
     init {
+        if (isDetailMode) {
+            loadExistingGiornaliera()
+        } else {
+            initializeEmptySelections()
+        }
+    }
+
+    private fun initializeEmptySelections() {
         viewModelScope.launch {
             personaleList.collect { list ->
                 if (list.isNotEmpty() && _uiState.value.personaleSelections.isEmpty()) {
@@ -128,28 +144,147 @@ class GiornalieraWizardViewModel @Inject constructor(
         }
     }
 
+    private fun loadExistingGiornaliera() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            try {
+                val giornaliera = giornalieraRepository.getById(giornalieraId!!)
+                if (giornaliera == null) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    return@launch
+                }
+
+                // Load personale giornaliera data
+                val personaleGiornaliere = personaleGiornalieraRepository
+                    .getByGiornalieraId(giornalieraId)
+                    .first()
+
+                val personaleSelections = mutableMapOf<Long, PersonaleFormData>()
+
+                // First, initialize all personale with empty data
+                val allPersonale = personaleList.first()
+                allPersonale.forEach { personale ->
+                    personaleSelections[personale.id] = PersonaleFormData()
+                }
+
+                // Then fill in the data for personale that were in the giornaliera
+                personaleGiornaliere.forEach { pg ->
+                    personaleSelections[pg.personaleId] = PersonaleFormData(
+                        presente = pg.presente,
+                        oreViaggioAndata = pg.oreViaggioAndata,
+                        oreViaggioRitorno = pg.oreViaggioRitorno,
+                        oreLavoro = pg.oreLavoro,
+                        inizioTurno = pg.inizioTurno,
+                        fineTurno = pg.fineTurno,
+                        pernotto = pg.pernotto
+                    )
+                }
+
+                // Load mezzo giornaliera data
+                val mezzoGiornaliere = mezzoGiornalieraRepository
+                    .getByGiornalieraId(giornalieraId)
+                    .first()
+
+                val mezzoSelections = mutableMapOf<Long, MezzoFormData>()
+
+                // First, initialize all mezzi with empty data
+                val allMezzi = mezzoList.first()
+                allMezzi.forEach { mezzo ->
+                    mezzoSelections[mezzo.id] = MezzoFormData()
+                }
+
+                // Then fill in the data for mezzi that were in the giornaliera
+                mezzoGiornaliere.forEach { mg ->
+                    mezzoSelections[mg.mezzoId] = MezzoFormData(
+                        utilizzato = true,
+                        kmAndata = mg.kmAndata,
+                        kmRitorno = mg.kmRitorno
+                    )
+                }
+
+                // Load attrezzatura giornaliera data
+                val attrezzaturaGiornaliere = attrezzaturaGiornalieraRepository
+                    .getByGiornalieraId(giornalieraId)
+                    .first()
+
+                val attrezzaturaSelections = mutableMapOf<Long, AttrezzaturaFormData>()
+
+                // First, initialize all attrezzature with empty data
+                val allAttrezzature = attrezzaturaList.first()
+                allAttrezzature.forEach { attrezzatura ->
+                    attrezzaturaSelections[attrezzatura.id] = AttrezzaturaFormData()
+                }
+
+                // Then fill in the data for attrezzature that were in the giornaliera
+                attrezzaturaGiornaliere.forEach { ag ->
+                    attrezzaturaSelections[ag.attrezzaturaId] = AttrezzaturaFormData(utilizzata = true)
+                }
+
+                _uiState.update { state ->
+                    state.copy(
+                        isLoading = false,
+                        giornaliera = giornaliera,
+                        personaleSelections = personaleSelections,
+                        mezzoSelections = mezzoSelections,
+                        attrezzaturaSelections = attrezzaturaSelections,
+                        riepilogo = calculateRiepilogo(personaleSelections, mezzoSelections, attrezzaturaSelections)
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false) }
+            }
+        }
+    }
+
     fun updatePersonaleData(personaleId: Long, data: PersonaleFormData) {
         _uiState.update { state ->
+            val newSelections = state.personaleSelections + (personaleId to data)
             state.copy(
-                personaleSelections = state.personaleSelections + (personaleId to data)
+                personaleSelections = newSelections,
+                riepilogo = calculateRiepilogo(newSelections, state.mezzoSelections, state.attrezzaturaSelections)
             )
         }
     }
 
     fun updateMezzoData(mezzoId: Long, data: MezzoFormData) {
         _uiState.update { state ->
+            val newSelections = state.mezzoSelections + (mezzoId to data)
             state.copy(
-                mezzoSelections = state.mezzoSelections + (mezzoId to data)
+                mezzoSelections = newSelections,
+                riepilogo = calculateRiepilogo(state.personaleSelections, newSelections, state.attrezzaturaSelections)
             )
         }
     }
 
     fun updateAttrezzaturaData(attrezzaturaId: Long, data: AttrezzaturaFormData) {
         _uiState.update { state ->
+            val newSelections = state.attrezzaturaSelections + (attrezzaturaId to data)
             state.copy(
-                attrezzaturaSelections = state.attrezzaturaSelections + (attrezzaturaId to data)
+                attrezzaturaSelections = newSelections,
+                riepilogo = calculateRiepilogo(state.personaleSelections, state.mezzoSelections, newSelections)
             )
         }
+    }
+
+    private fun calculateRiepilogo(
+        personaleSelections: Map<Long, PersonaleFormData>,
+        mezzoSelections: Map<Long, MezzoFormData>,
+        attrezzaturaSelections: Map<Long, AttrezzaturaFormData>
+    ): RiepilogoData {
+        val personalePresenti = personaleSelections.filter { it.value.presente }
+        val mezziUtilizzati = mezzoSelections.filter { it.value.utilizzato }
+        val attrezzatureUtilizzate = attrezzaturaSelections.filter { it.value.utilizzata }
+
+        return RiepilogoData(
+            totalePersonePresenti = personalePresenti.size,
+            totaleOreLavoro = personalePresenti.values.sumOf { it.oreLavoro.toDouble() }.toFloat(),
+            totaleOreViaggio = personalePresenti.values.sumOf { (it.oreViaggioAndata + it.oreViaggioRitorno).toDouble() }.toFloat(),
+            totalePernotti = personalePresenti.values.count { it.pernotto },
+            totaleMezziUtilizzati = mezziUtilizzati.size,
+            totaleKm = mezziUtilizzati.values.sumOf { (it.kmAndata + it.kmRitorno).toDouble() }.toFloat(),
+            totaleAttrezzatureUtilizzate = attrezzatureUtilizzate.size
+        )
     }
 
     fun nextStep() {
@@ -172,60 +307,110 @@ class GiornalieraWizardViewModel @Inject constructor(
         }
     }
 
+    fun toggleEditMode() {
+        _uiState.update { state ->
+            state.copy(isEditMode = !state.isEditMode)
+        }
+    }
+
     fun saveGiornaliera() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
 
             try {
-                val giornaliera = Giornaliera(
-                    cantiereId = cantiereId,
-                    data = System.currentTimeMillis(),
-                    stato = StatoGiornaliera.BOZZA
+                if (isDetailMode && giornalieraId != null) {
+                    // Update existing giornaliera
+                    val existingGiornaliera = _uiState.value.giornaliera
+                    if (existingGiornaliera != null) {
+                        giornalieraRepository.update(
+                            existingGiornaliera.copy(updatedAt = System.currentTimeMillis())
+                        )
+
+                        // Delete existing relations and re-insert
+                        personaleGiornalieraRepository.deleteByGiornalieraId(giornalieraId)
+                        mezzoGiornalieraRepository.deleteByGiornalieraId(giornalieraId)
+                        attrezzaturaGiornalieraRepository.deleteByGiornalieraId(giornalieraId)
+
+                        saveRelations(giornalieraId)
+                    }
+                } else {
+                    // Create new giornaliera
+                    val giornaliera = Giornaliera(
+                        cantiereId = cantiereId,
+                        data = System.currentTimeMillis(),
+                        stato = StatoGiornaliera.BOZZA
+                    )
+                    val newGiornalieraId = giornalieraRepository.insert(giornaliera)
+                    saveRelations(newGiornalieraId)
+                }
+
+                _uiState.update { it.copy(isSaving = false, saveCompleted = true) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSaving = false) }
+            }
+        }
+    }
+
+    private suspend fun saveRelations(giornalieraId: Long) {
+        // Salva solo il personale presente
+        val personaleGiornaliere = _uiState.value.personaleSelections
+            .filter { it.value.presente }
+            .map { (personaleId, data) ->
+                PersonaleGiornaliera(
+                    giornalieraId = giornalieraId,
+                    personaleId = personaleId,
+                    presente = data.presente,
+                    oreViaggioAndata = data.oreViaggioAndata,
+                    oreViaggioRitorno = data.oreViaggioRitorno,
+                    oreLavoro = data.oreLavoro,
+                    inizioTurno = data.inizioTurno,
+                    fineTurno = data.fineTurno,
+                    pernotto = data.pernotto
                 )
-                val giornalieraId = giornalieraRepository.insert(giornaliera)
+            }
+        personaleGiornalieraRepository.insertAll(personaleGiornaliere)
 
-                // Salva solo il personale presente
-                val personaleGiornaliere = _uiState.value.personaleSelections
-                    .filter { it.value.presente }
-                    .map { (personaleId, data) ->
-                        PersonaleGiornaliera(
-                            giornalieraId = giornalieraId,
-                            personaleId = personaleId,
-                            presente = data.presente,
-                            oreViaggioAndata = data.oreViaggioAndata,
-                            oreViaggioRitorno = data.oreViaggioRitorno,
-                            oreLavoro = data.oreLavoro,
-                            inizioTurno = data.inizioTurno,
-                            fineTurno = data.fineTurno,
-                            pernotto = data.pernotto
+        // Salva solo i mezzi utilizzati
+        val mezzoGiornaliere = _uiState.value.mezzoSelections
+            .filter { it.value.utilizzato }
+            .map { (mezzoId, data) ->
+                MezzoGiornaliera(
+                    giornalieraId = giornalieraId,
+                    mezzoId = mezzoId,
+                    kmAndata = data.kmAndata,
+                    kmRitorno = data.kmRitorno
+                )
+            }
+        mezzoGiornalieraRepository.insertAll(mezzoGiornaliere)
+
+        // Salva solo le attrezzature utilizzate
+        val attrezzaturaGiornaliere = _uiState.value.attrezzaturaSelections
+            .filter { it.value.utilizzata }
+            .map { (attrezzaturaId, _) ->
+                AttrezzaturaGiornaliera(
+                    giornalieraId = giornalieraId,
+                    attrezzaturaId = attrezzaturaId
+                )
+            }
+        attrezzaturaGiornalieraRepository.insertAll(attrezzaturaGiornaliere)
+    }
+
+    fun sendGiornaliera() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+
+            try {
+                if (giornalieraId != null) {
+                    val existingGiornaliera = _uiState.value.giornaliera
+                    if (existingGiornaliera != null) {
+                        giornalieraRepository.update(
+                            existingGiornaliera.copy(
+                                stato = StatoGiornaliera.INVIATA,
+                                updatedAt = System.currentTimeMillis()
+                            )
                         )
                     }
-                personaleGiornalieraRepository.insertAll(personaleGiornaliere)
-
-                // Salva solo i mezzi utilizzati
-                val mezzoGiornaliere = _uiState.value.mezzoSelections
-                    .filter { it.value.utilizzato }
-                    .map { (mezzoId, data) ->
-                        MezzoGiornaliera(
-                            giornalieraId = giornalieraId,
-                            mezzoId = mezzoId,
-                            kmAndata = data.kmAndata,
-                            kmRitorno = data.kmRitorno
-                        )
-                    }
-                mezzoGiornalieraRepository.insertAll(mezzoGiornaliere)
-
-                // Salva solo le attrezzature utilizzate
-                val attrezzaturaGiornaliere = _uiState.value.attrezzaturaSelections
-                    .filter { it.value.utilizzata }
-                    .map { (attrezzaturaId, _) ->
-                        AttrezzaturaGiornaliera(
-                            giornalieraId = giornalieraId,
-                            attrezzaturaId = attrezzaturaId
-                        )
-                    }
-                attrezzaturaGiornalieraRepository.insertAll(attrezzaturaGiornaliere)
-
+                }
                 _uiState.update { it.copy(isSaving = false, saveCompleted = true) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSaving = false) }

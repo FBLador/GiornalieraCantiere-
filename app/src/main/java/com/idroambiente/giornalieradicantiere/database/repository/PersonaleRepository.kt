@@ -9,6 +9,8 @@ class PersonaleRepository(private val personaleDao: PersonaleDao) {
 
     suspend fun getById(id: Long): Personale? = personaleDao.getById(id)
 
+    suspend fun getByIds(ids: List<Long>): List<Personale> = personaleDao.getByIds(ids)
+
     fun search(query: String): Flow<List<Personale>> = personaleDao.search(query)
 
     suspend fun insert(personale: Personale): Long = personaleDao.insert(personale)

@@ -44,7 +44,7 @@ import java.util.Locale
 fun GiornaliereScreen(
     viewModel: GiornaliereViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
-    onNavigateToGiornaliera: (Long) -> Unit = {},
+    onNavigateToGiornaliera: (Long, Long) -> Unit = { _, _ -> },
     onNavigateToWizard: (Long) -> Unit = {}
 ) {
     val commessa by viewModel.commessa.collectAsState()
@@ -113,7 +113,7 @@ fun GiornaliereScreen(
                         giornaliera = giornaliera,
                         onOpen = {
                             viewModel.openGiornaliera(giornaliera.id)
-                            onNavigateToGiornaliera(giornaliera.id)
+                            onNavigateToGiornaliera(giornaliera.cantiereId, giornaliera.id)
                         }
                     )
                 }

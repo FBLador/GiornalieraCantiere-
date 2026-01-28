@@ -9,6 +9,8 @@ class AttrezzaturaRepository(private val attrezzaturaDao: AttrezzaturaDao) {
 
     suspend fun getById(id: Long): Attrezzatura? = attrezzaturaDao.getById(id)
 
+    suspend fun getByIds(ids: List<Long>): List<Attrezzatura> = attrezzaturaDao.getByIds(ids)
+
     fun search(query: String): Flow<List<Attrezzatura>> = attrezzaturaDao.search(query)
 
     suspend fun insert(attrezzatura: Attrezzatura): Long = attrezzaturaDao.insert(attrezzatura)

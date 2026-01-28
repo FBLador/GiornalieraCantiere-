@@ -31,7 +31,7 @@ val wizardSteps = listOf(
     WizardStep("Persone", 0),
     WizardStep("Mezzi", 1),
     WizardStep("Attrezz.", 2),
-    WizardStep("Generale", 3)
+    WizardStep("Riepilogo", 3)
 )
 
 @Composable

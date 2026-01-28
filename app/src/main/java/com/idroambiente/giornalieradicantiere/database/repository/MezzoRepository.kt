@@ -9,6 +9,8 @@ class MezzoRepository(private val mezzoDao: MezzoDao) {
 
     suspend fun getById(id: Long): Mezzo? = mezzoDao.getById(id)
 
+    suspend fun getByIds(ids: List<Long>): List<Mezzo> = mezzoDao.getByIds(ids)
+
     fun search(query: String): Flow<List<Mezzo>> = mezzoDao.search(query)
 
     suspend fun getByTarga(targa: String): Mezzo? = mezzoDao.getByTarga(targa)

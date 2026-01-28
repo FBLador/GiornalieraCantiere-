@@ -17,6 +17,9 @@ interface MezzoDao {
     @Query("SELECT * FROM mezzo WHERE id = :id")
     suspend fun getById(id: Long): Mezzo?
 
+    @Query("SELECT * FROM mezzo WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<Mezzo>
+
     @Query("SELECT * FROM mezzo WHERE nome LIKE '%' || :query || '%' OR targa LIKE '%' || :query || '%' ORDER BY nome ASC")
     fun search(query: String): Flow<List<Mezzo>>
 

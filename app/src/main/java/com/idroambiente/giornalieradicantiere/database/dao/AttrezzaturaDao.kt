@@ -17,6 +17,9 @@ interface AttrezzaturaDao {
     @Query("SELECT * FROM attrezzatura WHERE id = :id")
     suspend fun getById(id: Long): Attrezzatura?
 
+    @Query("SELECT * FROM attrezzatura WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<Attrezzatura>
+
     @Query("SELECT * FROM attrezzatura WHERE nome LIKE '%' || :query || '%' ORDER BY nome ASC")
     fun search(query: String): Flow<List<Attrezzatura>>
 

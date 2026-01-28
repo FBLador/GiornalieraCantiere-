@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +45,20 @@ fun GiornalieraWizardScreen(
     val mezzoList by viewModel.mezzoList.collectAsState()
     val attrezzaturaList by viewModel.attrezzaturaList.collectAsState()
 
+    val isDetailMode = viewModel.isDetailMode
+    val isEditMode = uiState.isEditMode
+    val isReadOnly = isDetailMode && !isEditMode
+
+    // Determine title based on mode
+    val title = when {
+        !isDetailMode -> "Nuova Giornaliera"
+        isEditMode -> "Modifica Giornaliera"
+        else -> "Dettaglio Giornaliera"
+    }
+
+    // Check if giornaliera is already sent
+    val isGiornalieraInviata = uiState.giornaliera?.stato == StatoGiornaliera.INVIATA
+
     LaunchedEffect(uiState.saveCompleted) {
         if (uiState.saveCompleted) {
             onNavigateBack()
@@ -51,13 +68,24 @@ fun GiornalieraWizardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nuova Giornaliera") },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Indietro"
                         )
+                    }
+                },
+                actions = {
+                    // Show edit button only in detail mode and if not already sent
+                    if (isDetailMode && !isGiornalieraInviata) {
+                        IconButton(onClick = { viewModel.toggleEditMode() }) {
+                            Icon(
+                                imageVector = if (isEditMode) Icons.Default.Close else Icons.Default.Edit,
+                                contentDescription = if (isEditMode) "Annulla modifica" else "Modifica"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -83,31 +111,49 @@ fun GiornalieraWizardScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                when (uiState.currentStep) {
-                    0 -> PersonaleStepContent(
-                        personaleList = personaleList,
-                        personaleSelections = uiState.personaleSelections,
-                        onPersonaleDataChanged = { personaleId, data ->
-                            viewModel.updatePersonaleData(personaleId, data)
-                        }
-                    )
-                    1 -> MezzoStepContent(
-                        mezzoList = mezzoList,
-                        mezzoSelections = uiState.mezzoSelections,
-                        onMezzoDataChanged = { mezzoId, data ->
-                            viewModel.updateMezzoData(mezzoId, data)
-                        }
-                    )
-                    2 -> AttrezzaturaStepContent(
-                        attrezzaturaList = attrezzaturaList,
-                        attrezzaturaSelections = uiState.attrezzaturaSelections,
-                        onAttrezzaturaDataChanged = { attrezzaturaId, data ->
-                            viewModel.updateAttrezzaturaData(attrezzaturaId, data)
-                        }
-                    )
-                    3 -> PlaceholderStepContent(
-                        stepIndex = uiState.currentStep
-                    )
+                if (uiState.isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    when (uiState.currentStep) {
+                        0 -> PersonaleStepContent(
+                            personaleList = personaleList,
+                            personaleSelections = uiState.personaleSelections,
+                            onPersonaleDataChanged = { personaleId, data ->
+                                viewModel.updatePersonaleData(personaleId, data)
+                            },
+                            isReadOnly = isReadOnly
+                        )
+                        1 -> MezzoStepContent(
+                            mezzoList = mezzoList,
+                            mezzoSelections = uiState.mezzoSelections,
+                            onMezzoDataChanged = { mezzoId, data ->
+                                viewModel.updateMezzoData(mezzoId, data)
+                            },
+                            isReadOnly = isReadOnly
+                        )
+                        2 -> AttrezzaturaStepContent(
+                            attrezzaturaList = attrezzaturaList,
+                            attrezzaturaSelections = uiState.attrezzaturaSelections,
+                            onAttrezzaturaDataChanged = { attrezzaturaId, data ->
+                                viewModel.updateAttrezzaturaData(attrezzaturaId, data)
+                            },
+                            isReadOnly = isReadOnly
+                        )
+                        3 -> RiepilogoStepContent(
+                            personaleList = personaleList,
+                            mezzoList = mezzoList,
+                            attrezzaturaList = attrezzaturaList,
+                            personaleSelections = uiState.personaleSelections,
+                            mezzoSelections = uiState.mezzoSelections,
+                            attrezzaturaSelections = uiState.attrezzaturaSelections,
+                            riepilogo = uiState.riepilogo
+                        )
+                    }
                 }
 
                 if (uiState.isSaving) {
@@ -127,7 +173,11 @@ fun GiornalieraWizardScreen(
                 onPreviousClick = { viewModel.previousStep() },
                 onNextClick = { viewModel.nextStep() },
                 onSaveClick = { viewModel.saveGiornaliera() },
-                isSaving = uiState.isSaving
+                onSendClick = { viewModel.sendGiornaliera() },
+                isSaving = uiState.isSaving,
+                isDetailMode = isDetailMode,
+                isEditMode = isEditMode,
+                isGiornalieraInviata = isGiornalieraInviata
             )
         }
     }
@@ -139,7 +189,11 @@ private fun WizardNavigationButtons(
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     onSaveClick: () -> Unit,
-    isSaving: Boolean
+    onSendClick: () -> Unit,
+    isSaving: Boolean,
+    isDetailMode: Boolean,
+    isEditMode: Boolean,
+    isGiornalieraInviata: Boolean
 ) {
     Row(
         modifier = Modifier
@@ -165,11 +219,39 @@ private fun WizardNavigationButtons(
                 Text("Avanti")
             }
         } else {
-            Button(
-                onClick = onSaveClick,
-                enabled = !isSaving
-            ) {
-                Text("Salva")
+            // Last step - show appropriate buttons based on mode
+            when {
+                // Creation mode - show save button
+                !isDetailMode -> {
+                    Button(
+                        onClick = onSaveClick,
+                        enabled = !isSaving
+                    ) {
+                        Text("Salva")
+                    }
+                }
+                // Edit mode - show save button
+                isEditMode -> {
+                    Button(
+                        onClick = onSaveClick,
+                        enabled = !isSaving
+                    ) {
+                        Text("Salva")
+                    }
+                }
+                // View mode and not sent - show send button
+                !isGiornalieraInviata -> {
+                    Button(
+                        onClick = onSendClick,
+                        enabled = !isSaving
+                    ) {
+                        Text("Invia")
+                    }
+                }
+                // View mode and already sent - no action button
+                else -> {
+                    // Nothing to show - already sent
+                }
             }
         }
     }

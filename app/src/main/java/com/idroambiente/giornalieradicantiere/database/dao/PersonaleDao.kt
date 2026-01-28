@@ -17,6 +17,9 @@ interface PersonaleDao {
     @Query("SELECT * FROM personale WHERE id = :id")
     suspend fun getById(id: Long): Personale?
 
+    @Query("SELECT * FROM personale WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<Long>): List<Personale>
+
     @Query("SELECT * FROM personale WHERE nome LIKE '%' || :query || '%' OR cognome LIKE '%' || :query || '%' ORDER BY cognome ASC, nome ASC")
     fun search(query: String): Flow<List<Personale>>
 

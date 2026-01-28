@@ -45,8 +45,8 @@ fun AppNavHost(
         ) {
             GiornaliereScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToGiornaliera = { giornalieraId ->
-                    // TODO: Navigare a dettaglio giornaliera
+                onNavigateToGiornaliera = { cantiereId, giornalieraId ->
+                    navController.navigate(Routes.giornalieraWizard(cantiereId, giornalieraId))
                 },
                 onNavigateToWizard = { cantiereId ->
                     navController.navigate(Routes.giornalieraWizard(cantiereId))
@@ -56,7 +56,13 @@ fun AppNavHost(
 
         composable(
             route = Routes.GIORNALIERA_WIZARD,
-            arguments = listOf(navArgument("cantiereId") { type = NavType.LongType })
+            arguments = listOf(
+                navArgument("cantiereId") { type = NavType.LongType },
+                navArgument("giornalieraId") {
+                    type = NavType.LongType
+                    defaultValue = 0L
+                }
+            )
         ) {
             GiornalieraWizardScreen(
                 onNavigateBack = { navController.popBackStack() }
