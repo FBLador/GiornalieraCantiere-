@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -14,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -43,6 +45,9 @@ fun RiepilogoStepContent(
     mezzoSelections: Map<Long, MezzoFormData>,
     attrezzaturaSelections: Map<Long, AttrezzaturaFormData>,
     riepilogo: RiepilogoData,
+    note: String,
+    onNoteChanged: (String) -> Unit,
+    isReadOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -53,6 +58,52 @@ fun RiepilogoStepContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Spacer(modifier = Modifier.height(8.dp))
+
+        // Sezione Note
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Note",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (isReadOnly) {
+                    if (note.isBlank()) {
+                        Text(
+                            text = "Nessuna nota",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = note,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = onNoteChanged,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 100.dp),
+                        placeholder = {
+                            Text("Inserisci eventuali note...")
+                        },
+                        maxLines = 5
+                    )
+                }
+            }
+        }
 
         // Sezione Personale
         Card(

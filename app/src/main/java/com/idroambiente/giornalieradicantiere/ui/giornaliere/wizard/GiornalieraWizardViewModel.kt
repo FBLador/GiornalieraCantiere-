@@ -59,7 +59,8 @@ data class WizardUiState(
     val isEditMode: Boolean = false,
     val giornaliera: Giornaliera? = null,
     val isLoading: Boolean = false,
-    val riepilogo: RiepilogoData = RiepilogoData()
+    val riepilogo: RiepilogoData = RiepilogoData(),
+    val note: String = ""
 )
 
 @HiltViewModel
@@ -228,7 +229,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                         personaleSelections = personaleSelections,
                         mezzoSelections = mezzoSelections,
                         attrezzaturaSelections = attrezzaturaSelections,
-                        riepilogo = calculateRiepilogo(personaleSelections, mezzoSelections, attrezzaturaSelections)
+                        riepilogo = calculateRiepilogo(personaleSelections, mezzoSelections, attrezzaturaSelections),
+                        note = giornaliera.note ?: ""
                     )
                 }
             } catch (e: Exception) {
@@ -264,6 +266,12 @@ class GiornalieraWizardViewModel @Inject constructor(
                 attrezzaturaSelections = newSelections,
                 riepilogo = calculateRiepilogo(state.personaleSelections, state.mezzoSelections, newSelections)
             )
+        }
+    }
+
+    fun updateNote(note: String) {
+        _uiState.update { state ->
+            state.copy(note = note)
         }
     }
 
@@ -323,7 +331,10 @@ class GiornalieraWizardViewModel @Inject constructor(
                     val existingGiornaliera = _uiState.value.giornaliera
                     if (existingGiornaliera != null) {
                         giornalieraRepository.update(
-                            existingGiornaliera.copy(updatedAt = System.currentTimeMillis())
+                            existingGiornaliera.copy(
+                                note = _uiState.value.note.ifBlank { null },
+                                updatedAt = System.currentTimeMillis()
+                            )
                         )
 
                         // Delete existing relations and re-insert
@@ -338,7 +349,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                     val giornaliera = Giornaliera(
                         cantiereId = cantiereId,
                         data = System.currentTimeMillis(),
-                        stato = StatoGiornaliera.BOZZA
+                        stato = StatoGiornaliera.BOZZA,
+                        note = _uiState.value.note.ifBlank { null }
                     )
                     val newGiornalieraId = giornalieraRepository.insert(giornaliera)
                     saveRelations(newGiornalieraId)

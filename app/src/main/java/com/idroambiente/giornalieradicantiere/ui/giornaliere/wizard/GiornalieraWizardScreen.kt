@@ -151,7 +151,10 @@ fun GiornalieraWizardScreen(
                             personaleSelections = uiState.personaleSelections,
                             mezzoSelections = uiState.mezzoSelections,
                             attrezzaturaSelections = uiState.attrezzaturaSelections,
-                            riepilogo = uiState.riepilogo
+                            riepilogo = uiState.riepilogo,
+                            note = uiState.note,
+                            onNoteChanged = { viewModel.updateNote(it) },
+                            isReadOnly = isReadOnly
                         )
                     }
                 }
