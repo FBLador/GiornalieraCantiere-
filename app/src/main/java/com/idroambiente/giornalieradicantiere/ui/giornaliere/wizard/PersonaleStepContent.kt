@@ -10,17 +10,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -235,6 +242,11 @@ private fun PersonaleEditMode(
     onPersonaleDataChanged: (Long, PersonaleFormData) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Calculate the list of present personale for copy functionality
+    val presentPersonale = personaleList.filter {
+        personaleSelections[it.id]?.presente == true
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -244,11 +256,36 @@ private fun PersonaleEditMode(
         item { Spacer(modifier = Modifier.height(8.dp)) }
         items(personaleList, key = { it.id }) { personale ->
             val formData = personaleSelections[personale.id] ?: PersonaleFormData()
+
+            // Find the index in the present list and the person above
+            val indexInPresent = presentPersonale.indexOfFirst { it.id == personale.id }
+            val personaleAbove = if (indexInPresent > 0) presentPersonale[indexInPresent - 1] else null
+            val personaleAboveData = personaleAbove?.let { personaleSelections[it.id] }
+
+            // Other present personale (excluding current)
+            val otherPresenti = presentPersonale.filter { it.id != personale.id }
+
             PersonaleCard(
                 personale = personale,
                 formData = formData,
                 onFormDataChanged = { newData ->
                     onPersonaleDataChanged(personale.id, newData)
+                },
+                personaleAbove = personaleAbove,
+                personaleAboveData = personaleAboveData,
+                otherPresenti = otherPresenti,
+                allSelections = personaleSelections,
+                onCopyFrom = { sourceId ->
+                    personaleSelections[sourceId]?.let { sourceData ->
+                        onPersonaleDataChanged(personale.id, formData.copy(
+                            oreViaggioAndata = sourceData.oreViaggioAndata,
+                            oreViaggioRitorno = sourceData.oreViaggioRitorno,
+                            inizioTurno = sourceData.inizioTurno,
+                            fineTurno = sourceData.fineTurno,
+                            oreLavoro = sourceData.oreLavoro,
+                            pernotto = sourceData.pernotto
+                        ))
+                    }
                 }
             )
         }
@@ -260,7 +297,12 @@ private fun PersonaleEditMode(
 private fun PersonaleCard(
     personale: Personale,
     formData: PersonaleFormData,
-    onFormDataChanged: (PersonaleFormData) -> Unit
+    onFormDataChanged: (PersonaleFormData) -> Unit,
+    personaleAbove: Personale? = null,
+    personaleAboveData: PersonaleFormData? = null,
+    otherPresenti: List<Personale> = emptyList(),
+    allSelections: Map<Long, PersonaleFormData> = emptyMap(),
+    onCopyFrom: (Long) -> Unit = {}
 ) {
     val alpha = if (formData.presente) 1f else 0.5f
 
@@ -306,6 +348,18 @@ private fun PersonaleCard(
             }
 
             if (formData.presente) {
+                // Show "Copy from..." button if there are other people to copy from
+                if (personaleAbove != null || otherPresenti.isNotEmpty()) {
+                    CopyFromButton(
+                        personaleAbove = personaleAbove,
+                        personaleAboveData = personaleAboveData,
+                        otherPresenti = otherPresenti,
+                        allSelections = allSelections,
+                        onCopyFrom = onCopyFrom
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
@@ -505,4 +559,82 @@ private fun DecimalTextField(
         modifier = modifier,
         singleLine = true
     )
+}
+
+@Composable
+private fun CopyFromButton(
+    personaleAbove: Personale?,
+    personaleAboveData: PersonaleFormData?,
+    otherPresenti: List<Personale>,
+    allSelections: Map<Long, PersonaleFormData>,
+    onCopyFrom: (Long) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    // Filter other present people who have some data filled in
+    val altriConDati = otherPresenti.filter { p ->
+        val data = allSelections[p.id]
+        data != null && (data.oreLavoro > 0 || data.inizioTurno > 0)
+    }
+
+    // Only show if there's someone above or others with data
+    val hasPersonaleAboveWithData = personaleAbove != null && personaleAboveData != null &&
+            (personaleAboveData.oreLavoro > 0 || personaleAboveData.inizioTurno > 0)
+
+    if (!hasPersonaleAboveWithData && altriConDati.isEmpty()) {
+        return
+    }
+
+    Box {
+        TextButton(onClick = { expanded = true }) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.List,
+                contentDescription = null,
+                modifier = Modifier.height(18.dp)
+            )
+            Spacer(Modifier.width(4.dp))
+            Text("Copia da...")
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            // Quick option "Copy from above"
+            if (hasPersonaleAboveWithData && personaleAbove != null) {
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Copia da sopra (${personaleAbove.nome})")
+                        }
+                    },
+                    onClick = {
+                        onCopyFrom(personaleAbove.id)
+                        expanded = false
+                    }
+                )
+
+                if (altriConDati.isNotEmpty()) {
+                    HorizontalDivider()
+                }
+            }
+
+            // List of other present people with filled data
+            altriConDati.forEach { p ->
+                DropdownMenuItem(
+                    text = { Text("${p.nome} ${p.cognome}") },
+                    onClick = {
+                        onCopyFrom(p.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
