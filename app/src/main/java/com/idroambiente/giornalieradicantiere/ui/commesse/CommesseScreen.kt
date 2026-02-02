@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
@@ -30,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +40,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -207,40 +213,105 @@ fun CreateCommessaDialog(
     onConfirm: (codice: String, cliente: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var codice by remember { mutableStateOf("") }
-    var codiceDigits by remember { mutableStateOf("") }
+    var codiceParte1 by remember { mutableStateOf("") }  // prime 4 cifre
+    var codiceParte2 by remember { mutableStateOf("") }  // ultime 3 cifre
     var cliente by remember { mutableStateOf("") }
+
+    val focusManager = LocalFocusManager.current
+    val focusRequester1 = remember { FocusRequester() }
+    val focusRequester2 = remember { FocusRequester() }
+    val focusRequester3 = remember { FocusRequester() }
+
+    // Auto-focus al primo campo all'apertura
+    LaunchedEffect(Unit) {
+        focusRequester1.requestFocus()
+    }
+
+    // Auto-advance: quando codiceParte1 ha 4 cifre, passa a codiceParte2
+    LaunchedEffect(codiceParte1) {
+        if (codiceParte1.length == 4) {
+            focusRequester2.requestFocus()
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Nuova Commessa") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = codice,
-                    onValueChange = { input ->
-                        val digits = input.filter(Char::isDigit).take(7)
-                        codiceDigits = digits
-                        codice = formatCodiceCommessa(digits)
-                    },
-                    label = { Text("Codice") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = codiceParte1,
+                        onValueChange = { input ->
+                            codiceParte1 = input.filter(Char::isDigit).take(4)
+                        },
+                        label = { Text("Codice") },
+                        placeholder = { Text("0000") },
+                        supportingText = { Text("${codiceParte1.length}/4") },
+                        isError = codiceParte1.isNotEmpty() && codiceParte1.length < 4,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusRequester2.requestFocus() }
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester1)
+                    )
+                    Text("-", style = MaterialTheme.typography.headlineMedium)
+                    OutlinedTextField(
+                        value = codiceParte2,
+                        onValueChange = { input ->
+                            codiceParte2 = input.filter(Char::isDigit).take(3)
+                        },
+                        label = { Text("Suffisso") },
+                        placeholder = { Text("000") },
+                        supportingText = { Text("${codiceParte2.length}/3") },
+                        isError = codiceParte2.isNotEmpty() && codiceParte2.length < 3,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusRequester3.requestFocus() }
+                        ),
+                        modifier = Modifier
+                            .weight(0.75f)
+                            .focusRequester(focusRequester2)
+                    )
+                }
                 OutlinedTextField(
                     value = cliente,
                     onValueChange = { cliente = it },
                     label = { Text("Cliente") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (codiceParte1.length == 4 && codiceParte2.length == 3 && cliente.isNotBlank()) {
+                                onConfirm(codiceParte1 + codiceParte2, cliente)
+                            }
+                        }
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester3)
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(codice, cliente) },
-                enabled = codiceDigits.length == 7 && cliente.isNotBlank()
+                onClick = { onConfirm(codiceParte1 + codiceParte2, cliente) },
+                enabled = codiceParte1.length == 4 && codiceParte2.length == 3 && cliente.isNotBlank()
             ) {
                 Text("Crea")
             }
@@ -253,9 +324,3 @@ fun CreateCommessaDialog(
     )
 }
 
-private fun formatCodiceCommessa(digits: String): String {
-    if (digits.length <= 4) {
-        return digits
-    }
-    return "${digits.take(4)} ${digits.drop(4)}"
-}
