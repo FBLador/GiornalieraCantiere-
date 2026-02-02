@@ -236,6 +236,13 @@ private fun formatOre(ore: Float): String {
     }
 }
 
+private fun calculateOreLavoro(inizioTurno: Long, fineTurno: Long, orePausa: Float): Float {
+    if (inizioTurno <= 0 || fineTurno <= 0) return 0f
+    val durataMs = fineTurno - inizioTurno
+    val durataOre = durataMs / 1000f / 60f / 60f
+    return maxOf(0f, durataOre - orePausa)
+}
+
 
 @Composable
 private fun PersonaleEditMode(
@@ -246,7 +253,7 @@ private fun PersonaleEditMode(
 ) {
     // Determine initial phase: if there are already present people with data, go to DATA_ENTRY
     val hasExistingData = personaleSelections.any {
-        it.value.presente && it.value.oreLavoro > 0
+        it.value.presente && (it.value.oreLavoro > 0 || (it.value.inizioTurno > 0 && it.value.fineTurno > 0))
     }
     var currentPhase by remember {
         mutableStateOf(if (hasExistingData) PersonaleEditPhase.DATA_ENTRY else PersonaleEditPhase.SELECTION)
@@ -373,7 +380,7 @@ private fun PersonaleDataEntryPhase(
     var oreViaggioRitorno by remember { mutableStateOf(0f) }
     var inizioTurno by remember { mutableStateOf(0L) }
     var fineTurno by remember { mutableStateOf(0L) }
-    var oreLavoro by remember { mutableStateOf(0f) }
+    var orePausa by remember { mutableStateOf(0f) }
     var pernotto by remember { mutableStateOf(false) }
 
     // Get list of present people
@@ -384,7 +391,7 @@ private fun PersonaleDataEntryPhase(
         mutableStateOf(
             presenti.filter { p ->
                 val data = personaleSelections[p.id]
-                data == null || data.oreLavoro == 0f
+                data == null || (data.oreLavoro == 0f && data.inizioTurno <= 0 && data.fineTurno <= 0)
             }.map { it.id }.toSet()
         )
     }
@@ -469,11 +476,11 @@ private fun PersonaleDataEntryPhase(
 
             Spacer(Modifier.height(8.dp))
 
-            // Ore Lavoro
+            // Ore Pausa
             DecimalTextField(
-                value = oreLavoro,
-                onValueChange = { oreLavoro = it },
-                label = "Ore Lavoro (esclusa pausa pranzo)",
+                value = orePausa,
+                onValueChange = { orePausa = it },
+                label = "Ore Pausa",
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -523,7 +530,8 @@ private fun PersonaleDataEntryPhase(
             // Checkbox list with status indicators
             presenti.forEach { personale ->
                 val isSelected = selectedIds.contains(personale.id)
-                val hasData = (personaleSelections[personale.id]?.oreLavoro ?: 0f) > 0
+                val data = personaleSelections[personale.id]
+                val hasData = data != null && (data.oreLavoro > 0 || (data.inizioTurno > 0 && data.fineTurno > 0))
 
                 Row(
                     modifier = Modifier
@@ -562,13 +570,15 @@ private fun PersonaleDataEntryPhase(
         // Apply button
         Button(
             onClick = {
+                val oreLavoroCalcolate = calculateOreLavoro(inizioTurno, fineTurno, orePausa)
                 val formData = PersonaleFormData(
                     presente = true,
                     oreViaggioAndata = oreViaggioAndata,
                     oreViaggioRitorno = oreViaggioRitorno,
                     inizioTurno = inizioTurno,
                     fineTurno = fineTurno,
-                    oreLavoro = oreLavoro,
+                    oreLavoro = oreLavoroCalcolate,
+                    orePausa = orePausa,
                     pernotto = pernotto
                 )
                 selectedIds.forEach { personId ->

@@ -34,6 +34,7 @@ data class PersonaleFormData(
     val oreViaggioAndata: Float = 0f,
     val oreViaggioRitorno: Float = 0f,
     val oreLavoro: Float = 0f,
+    val orePausa: Float = 0f,
     val inizioTurno: Long = 0L,
     val fineTurno: Long = 0L,
     val pernotto: Boolean = false
@@ -171,11 +172,20 @@ class GiornalieraWizardViewModel @Inject constructor(
 
                 // Then fill in the data for personale that were in the giornaliera
                 personaleGiornaliere.forEach { pg ->
+                    // Calcola orePausa da dati esistenti: orePausa = durataOre - oreLavoro
+                    val orePausa = if (pg.inizioTurno > 0 && pg.fineTurno > 0) {
+                        val durataMs = pg.fineTurno - pg.inizioTurno
+                        val durataOre = durataMs / 1000f / 60f / 60f
+                        maxOf(0f, durataOre - pg.oreLavoro)
+                    } else {
+                        0f
+                    }
                     personaleSelections[pg.personaleId] = PersonaleFormData(
                         presente = pg.presente,
                         oreViaggioAndata = pg.oreViaggioAndata,
                         oreViaggioRitorno = pg.oreViaggioRitorno,
                         oreLavoro = pg.oreLavoro,
+                        orePausa = orePausa,
                         inizioTurno = pg.inizioTurno,
                         fineTurno = pg.fineTurno,
                         pernotto = pg.pernotto
