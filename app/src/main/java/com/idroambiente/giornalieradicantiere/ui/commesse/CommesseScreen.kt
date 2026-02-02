@@ -37,6 +37,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.Commessa
@@ -122,8 +124,8 @@ fun CommesseScreen(
 
         if (showCreateDialog) {
             CreateCommessaDialog(
-                onConfirm = { nome, cliente, indirizzo ->
-                    viewModel.createCommessa(nome, cliente, indirizzo)
+                onConfirm = { codice, cliente ->
+                    viewModel.createCommessa(codice, cliente, "")
                 },
                 onDismiss = { viewModel.hideCreateDialog() }
             )
@@ -202,12 +204,12 @@ fun StatoChip(stato: StatoCommessa) {
 
 @Composable
 fun CreateCommessaDialog(
-    onConfirm: (nome: String, cliente: String, indirizzo: String) -> Unit,
+    onConfirm: (codice: String, cliente: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var nome by remember { mutableStateOf("") }
+    var codice by remember { mutableStateOf("") }
+    var codiceDigits by remember { mutableStateOf("") }
     var cliente by remember { mutableStateOf("") }
-    var indirizzo by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -215,10 +217,15 @@ fun CreateCommessaDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = nome,
-                    onValueChange = { nome = it },
-                    label = { Text("Nome") },
+                    value = codice,
+                    onValueChange = { input ->
+                        val digits = input.filter(Char::isDigit).take(7)
+                        codiceDigits = digits
+                        codice = formatCodiceCommessa(digits)
+                    },
+                    label = { Text("Codice") },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -228,19 +235,12 @@ fun CreateCommessaDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = indirizzo,
-                    onValueChange = { indirizzo = it },
-                    label = { Text("Indirizzo") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(nome, cliente, indirizzo) },
-                enabled = nome.isNotBlank() && cliente.isNotBlank() && indirizzo.isNotBlank()
+                onClick = { onConfirm(codice, cliente) },
+                enabled = codiceDigits.length == 7 && cliente.isNotBlank()
             ) {
                 Text("Crea")
             }
@@ -251,4 +251,11 @@ fun CreateCommessaDialog(
             }
         }
     )
+}
+
+private fun formatCodiceCommessa(digits: String): String {
+    if (digits.length <= 4) {
+        return digits
+    }
+    return "${digits.take(4)} ${digits.drop(4)}"
 }
