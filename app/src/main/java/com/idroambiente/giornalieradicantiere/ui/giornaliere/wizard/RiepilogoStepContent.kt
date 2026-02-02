@@ -15,6 +15,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +48,8 @@ fun RiepilogoStepContent(
     riepilogo: RiepilogoData,
     note: String,
     onNoteChanged: (String) -> Unit,
+    pdfFolderLabel: String?,
+    onPdfFolderSelect: () -> Unit,
     isReadOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -58,6 +61,34 @@ fun RiepilogoStepContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Spacer(modifier = Modifier.height(8.dp))
+
+        // Sezione cartella PDF
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Salvataggio PDF",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = pdfFolderLabel ?: "Cartella predefinita dell'app",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(onClick = onPdfFolderSelect) {
+                    Text("Seleziona cartella")
+                }
+            }
+        }
 
         // Sezione Note
         Card(
@@ -332,4 +363,3 @@ private fun formatKm(km: Float): String {
         String.format(Locale.ITALY, "%.1f", km)
     }
 }
-

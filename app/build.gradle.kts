@@ -74,6 +74,9 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
+
+    // DocumentFile
+    implementation("androidx.documentfile:documentfile:1.0.1")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

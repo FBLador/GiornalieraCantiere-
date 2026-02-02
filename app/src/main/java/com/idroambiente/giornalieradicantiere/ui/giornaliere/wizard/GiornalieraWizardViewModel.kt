@@ -13,11 +13,19 @@ import com.idroambiente.giornalieradicantiere.database.entities.PersonaleGiornal
 import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
 import com.idroambiente.giornalieradicantiere.database.repository.AttrezzaturaGiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.AttrezzaturaRepository
+import com.idroambiente.giornalieradicantiere.database.repository.CantiereRepository
+import com.idroambiente.giornalieradicantiere.database.repository.CommessaRepository
 import com.idroambiente.giornalieradicantiere.database.repository.GiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.MezzoGiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.MezzoRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleGiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleRepository
+import com.idroambiente.giornalieradicantiere.pdf.AttrezzaturaPdfEntry
+import com.idroambiente.giornalieradicantiere.pdf.GiornalieraPdfGenerator
+import com.idroambiente.giornalieradicantiere.pdf.MezzoPdfEntry
+import com.idroambiente.giornalieradicantiere.pdf.PdfFolderRepository
+import com.idroambiente.giornalieradicantiere.pdf.PersonalePdfEntry
+import android.net.Uri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -60,7 +68,9 @@ data class WizardUiState(
     val giornaliera: Giornaliera? = null,
     val isLoading: Boolean = false,
     val riepilogo: RiepilogoData = RiepilogoData(),
-    val note: String = ""
+    val note: String = "",
+    val pdfFolderLabel: String? = null,
+    val pdfFolderUri: String? = null
 )
 
 @HiltViewModel
@@ -68,11 +78,15 @@ class GiornalieraWizardViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val personaleRepository: PersonaleRepository,
     private val giornalieraRepository: GiornalieraRepository,
+    private val cantiereRepository: CantiereRepository,
+    private val commessaRepository: CommessaRepository,
     private val personaleGiornalieraRepository: PersonaleGiornalieraRepository,
     private val mezzoRepository: MezzoRepository,
     private val mezzoGiornalieraRepository: MezzoGiornalieraRepository,
     private val attrezzaturaRepository: AttrezzaturaRepository,
-    private val attrezzaturaGiornalieraRepository: AttrezzaturaGiornalieraRepository
+    private val attrezzaturaGiornalieraRepository: AttrezzaturaGiornalieraRepository,
+    private val giornalieraPdfGenerator: GiornalieraPdfGenerator,
+    private val pdfFolderRepository: PdfFolderRepository
 ) : ViewModel() {
 
     val cantiereId: Long = savedStateHandle.get<Long>("cantiereId") ?: 0L
@@ -105,10 +119,32 @@ class GiornalieraWizardViewModel @Inject constructor(
     val uiState: StateFlow<WizardUiState> = _uiState.asStateFlow()
 
     init {
+        loadPdfFolder()
         if (isDetailMode) {
             loadExistingGiornaliera()
         } else {
             initializeEmptySelections()
+        }
+    }
+
+    private fun loadPdfFolder() {
+        val uri = pdfFolderRepository.getFolderUri()
+        _uiState.update { state ->
+            state.copy(
+                pdfFolderUri = uri?.toString(),
+                pdfFolderLabel = pdfFolderRepository.getFolderLabel(uri)
+            )
+        }
+    }
+
+    fun onPdfFolderSelected(uri: Uri) {
+        pdfFolderRepository.persistAccess(uri)
+        pdfFolderRepository.saveFolderUri(uri)
+        _uiState.update { state ->
+            state.copy(
+                pdfFolderUri = uri.toString(),
+                pdfFolderLabel = pdfFolderRepository.getFolderLabel(uri)
+            )
         }
     }
 
@@ -415,12 +451,12 @@ class GiornalieraWizardViewModel @Inject constructor(
                 if (giornalieraId != null) {
                     val existingGiornaliera = _uiState.value.giornaliera
                     if (existingGiornaliera != null) {
-                        giornalieraRepository.update(
-                            existingGiornaliera.copy(
-                                stato = StatoGiornaliera.INVIATA,
-                                updatedAt = System.currentTimeMillis()
-                            )
+                        val updatedGiornaliera = existingGiornaliera.copy(
+                            stato = StatoGiornaliera.INVIATA,
+                            updatedAt = System.currentTimeMillis()
                         )
+                        giornalieraRepository.update(updatedGiornaliera)
+                        generatePdf(updatedGiornaliera)
                     }
                 }
                 _uiState.update { it.copy(isSaving = false, saveCompleted = true) }
@@ -428,5 +464,59 @@ class GiornalieraWizardViewModel @Inject constructor(
                 _uiState.update { it.copy(isSaving = false) }
             }
         }
+    }
+
+    private suspend fun generatePdf(giornaliera: Giornaliera) {
+        val personaleById = personaleList.value.associateBy { it.id }
+        val mezziById = mezzoList.value.associateBy { it.id }
+        val attrezzatureById = attrezzaturaList.value.associateBy { it.id }
+
+        val personaleEntries = _uiState.value.personaleSelections
+            .filter { it.value.presente }
+            .mapNotNull { (personaleId, data) ->
+                val persona = personaleById[personaleId] ?: return@mapNotNull null
+                PersonalePdfEntry(
+                    nomeCompleto = "${persona.nome} ${persona.cognome}",
+                    oreLavoro = data.oreLavoro,
+                    oreViaggio = data.oreViaggioAndata + data.oreViaggioRitorno,
+                    pernotto = data.pernotto,
+                    inizioTurno = data.inizioTurno,
+                    fineTurno = data.fineTurno
+                )
+            }
+
+        val mezziEntries = _uiState.value.mezzoSelections
+            .filter { it.value.utilizzato }
+            .mapNotNull { (mezzoId, data) ->
+                val mezzo = mezziById[mezzoId] ?: return@mapNotNull null
+                MezzoPdfEntry(
+                    nome = mezzo.nome,
+                    targa = mezzo.targa,
+                    kmAndata = data.kmAndata,
+                    kmRitorno = data.kmRitorno
+                )
+            }
+
+        val attrezzatureEntries = _uiState.value.attrezzaturaSelections
+            .filter { it.value.utilizzata }
+            .mapNotNull { (attrezzaturaId, _) ->
+                val attrezzatura = attrezzatureById[attrezzaturaId] ?: return@mapNotNull null
+                AttrezzaturaPdfEntry(nome = attrezzatura.nome)
+            }
+
+        val cantiere = cantiereRepository.getById(giornaliera.cantiereId)
+        val commessa = cantiere?.let { commessaRepository.getById(it.commessaId) }
+
+        giornalieraPdfGenerator.generatePdf(
+            giornaliera = giornaliera,
+            cantiere = cantiere,
+            commessa = commessa,
+            personale = personaleEntries,
+            mezzi = mezziEntries,
+            attrezzature = attrezzatureEntries,
+            riepilogo = _uiState.value.riepilogo,
+            note = _uiState.value.note,
+            folderUri = pdfFolderRepository.getFolderUri()
+        )
     }
 }

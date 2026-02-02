@@ -31,8 +31,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
+import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +51,12 @@ fun GiornalieraWizardScreen(
     val isDetailMode = viewModel.isDetailMode
     val isEditMode = uiState.isEditMode
     val isReadOnly = isDetailMode && !isEditMode
+
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let { viewModel.onPdfFolderSelected(it) }
+    }
 
     // Determine title based on mode
     val title = when {
@@ -154,6 +163,11 @@ fun GiornalieraWizardScreen(
                             riepilogo = uiState.riepilogo,
                             note = uiState.note,
                             onNoteChanged = { viewModel.updateNote(it) },
+                            pdfFolderLabel = uiState.pdfFolderLabel,
+                            onPdfFolderSelect = {
+                                val initialUri = uiState.pdfFolderUri?.let { Uri.parse(it) }
+                                folderPickerLauncher.launch(initialUri)
+                            },
                             isReadOnly = isReadOnly
                         )
                     }
