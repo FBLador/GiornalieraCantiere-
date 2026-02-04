@@ -3,7 +3,6 @@ package com.idroambiente.giornalieradicantiere.ui.impostazioni
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.idroambiente.giornalieradicantiere.data.preferences.PreferencesRepository
 import com.idroambiente.giornalieradicantiere.services.DriveFolder
 import com.idroambiente.giornalieradicantiere.services.GoogleAuthService
@@ -11,16 +10,15 @@ import com.idroambiente.giornalieradicantiere.services.GoogleDriveService
 import com.idroambiente.giornalieradicantiere.services.NetworkUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class GoogleDriveSettingsState(
     val isSignedIn: Boolean = false,
+    val userDisplayName: String? = null,
     val userEmail: String? = null,
     val rootFolderId: String? = null,
     val rootFolderName: String? = null,
@@ -29,15 +27,6 @@ data class GoogleDriveSettingsState(
     val isOffline: Boolean = false,
     val showFolderPicker: Boolean = false,
     val folderPickerState: FolderPickerState = FolderPickerState()
-)
-
-data class FolderPickerState(
-    val currentFolderId: String = "root",
-    val currentFolderName: String = "Il mio Drive",
-    val folders: List<DriveFolder> = emptyList(),
-    val isLoading: Boolean = false,
-    val breadcrumbs: List<Pair<String, String>> = listOf("root" to "Il mio Drive"),
-    val showCreateFolderDialog: Boolean = false
 )
 
 @HiltViewModel
@@ -72,6 +61,11 @@ class GoogleDriveSettingsViewModel @Inject constructor(
                 _uiState.value = newState
             }
         }
+        viewModelScope.launch {
+            preferencesRepository.googleUserDisplayName.collect { displayName ->
+                _uiState.value = _uiState.value.copy(userDisplayName = displayName)
+            }
+        }
     }
 
     /**
@@ -92,13 +86,16 @@ class GoogleDriveSettingsViewModel @Inject constructor(
             
             result.fold(
                 onSuccess = { account ->
-                    // Save email to preferences
                     account.email?.let { email ->
                         preferencesRepository.setGoogleUserEmail(email)
+                    }
+                    account.displayName?.let { name ->
+                        preferencesRepository.setGoogleUserDisplayName(name)
                     }
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isSignedIn = true,
+                        userDisplayName = account.displayName,
                         userEmail = account.email
                     )
                 },
@@ -123,6 +120,7 @@ class GoogleDriveSettingsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 isSignedIn = false,
+                userDisplayName = null,
                 userEmail = null,
                 rootFolderId = null,
                 rootFolderName = null

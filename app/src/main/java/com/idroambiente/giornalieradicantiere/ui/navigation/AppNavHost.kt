@@ -1,12 +1,19 @@
 package com.idroambiente.giornalieradicantiere.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.idroambiente.giornalieradicantiere.data.preferences.PreferencesRepository
 import com.idroambiente.giornalieradicantiere.ui.commesse.CommesseScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.GiornalieraWizardScreen
@@ -14,20 +21,41 @@ import com.idroambiente.giornalieradicantiere.ui.impostazioni.AttrezzaturaListSc
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.ImpostazioniScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.MezzoListScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.PersonaleListScreen
+import com.idroambiente.giornalieradicantiere.ui.setup.SetupScreen
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
+    preferencesRepository: PreferencesRepository,
     modifier: Modifier = Modifier
 ) {
-    // TODO: Caricare ultima commessa aperta da DataStore e navigare direttamente
-    // TODO: Aggiungere schermata autenticazione come startDestination
+    val setupCompleted by preferencesRepository.setupCompleted.collectAsState(initial = null)
+
+    // Show nothing while loading the preference (null = not yet loaded)
+    if (setupCompleted == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    val startDestination = if (setupCompleted == true) Routes.COMMESSE_LIST else Routes.SETUP
 
     NavHost(
         navController = navController,
-        startDestination = Routes.COMMESSE_LIST,
+        startDestination = startDestination,
         modifier = modifier
     ) {
+        composable(Routes.SETUP) {
+            SetupScreen(
+                onSetupComplete = {
+                    navController.navigate(Routes.COMMESSE_LIST) {
+                        popUpTo(Routes.SETUP) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Routes.COMMESSE_LIST) {
             CommesseScreen(
                 onNavigateToCommessa = { commessaId ->

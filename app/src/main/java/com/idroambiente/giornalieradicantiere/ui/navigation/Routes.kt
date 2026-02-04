@@ -1,6 +1,7 @@
 package com.idroambiente.giornalieradicantiere.ui.navigation
 
 object Routes {
+    const val SETUP = "setup"
     const val COMMESSE_LIST = "commesse_list"
     const val GIORNALIERE_LIST = "giornaliere_list/{commessaId}"
     const val GIORNALIERA_WIZARD = "giornaliera_wizard/{cantiereId}?giornalieraId={giornalieraId}"

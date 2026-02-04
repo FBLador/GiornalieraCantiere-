@@ -121,6 +121,7 @@ fun GoogleDriveSettingsSection(
         } else if (uiState.isSignedIn) {
             // Signed in state
             SignedInContent(
+                userDisplayName = uiState.userDisplayName,
                 userEmail = uiState.userEmail,
                 rootFolderName = uiState.rootFolderName,
                 onSignOut = { viewModel.signOut() },
@@ -221,6 +222,7 @@ fun GoogleDriveSettingsSection(
 
 @Composable
 private fun SignedInContent(
+    userDisplayName: String?,
     userEmail: String?,
     rootFolderName: String?,
     onSignOut: () -> Unit,
@@ -228,7 +230,7 @@ private fun SignedInContent(
 ) {
     // Account info
     ListItem(
-        headlineContent = { Text("Account connesso") },
+        headlineContent = { Text(userDisplayName ?: "Account connesso") },
         supportingContent = {
             Text(
                 text = userEmail ?: "Email non disponibile",

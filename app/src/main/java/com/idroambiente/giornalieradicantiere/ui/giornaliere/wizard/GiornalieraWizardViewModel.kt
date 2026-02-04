@@ -729,6 +729,9 @@ class GiornalieraWizardViewModel @Inject constructor(
                 allAttrezzature.find { it.id == attrezzaturaId }
             }
 
+        // Ottieni il nome utente Google
+        val userName = preferencesRepository.googleUserDisplayName.first()
+
         // Calcola il riepilogo per il PDF
         val riepilogo = _uiState.value.riepilogo
         val pdfRiepilogo = PdfRiepilogoData(
@@ -748,7 +751,8 @@ class GiornalieraWizardViewModel @Inject constructor(
             personaleList = personalePresenti,
             mezziList = mezziUtilizzati,
             attrezzatureList = attrezzatureUtilizzate,
-            riepilogo = pdfRiepilogo
+            riepilogo = pdfRiepilogo,
+            userName = userName
         )
     }
 

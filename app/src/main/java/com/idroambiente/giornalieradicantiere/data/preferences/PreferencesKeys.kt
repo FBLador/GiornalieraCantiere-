@@ -1,5 +1,6 @@
 package com.idroambiente.giornalieradicantiere.data.preferences
 
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 object PreferencesKeys {
@@ -17,6 +18,10 @@ object PreferencesKeys {
     val GOOGLE_DRIVE_ROOT_FOLDER_ID = stringPreferencesKey("google_drive_root_folder_id")
     val GOOGLE_DRIVE_ROOT_FOLDER_NAME = stringPreferencesKey("google_drive_root_folder_name")
     val GOOGLE_USER_EMAIL = stringPreferencesKey("google_user_email")
+
+    // Setup / onboarding
+    val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
+    val GOOGLE_USER_DISPLAY_NAME = stringPreferencesKey("google_user_display_name")
 }
 
 /**

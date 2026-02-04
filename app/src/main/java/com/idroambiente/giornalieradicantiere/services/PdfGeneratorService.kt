@@ -64,7 +64,8 @@ data class GiornalieraPdfData(
     val personaleList: List<PersonaleWithData>,
     val mezziList: List<MezzoWithData>,
     val attrezzatureList: List<Attrezzatura>,
-    val riepilogo: PdfRiepilogoData
+    val riepilogo: PdfRiepilogoData,
+    val userName: String? = null
 )
 
 @Singleton
@@ -235,6 +236,12 @@ class PdfGeneratorService @Inject constructor(
         val dateStr = dateFormat.format(Date(data.giornaliera.data))
         canvas.drawText("Data: $dateStr", MARGIN, y + 14f, headerPaint)
         y += 25f
+
+        // Compilato da
+        if (!data.userName.isNullOrBlank()) {
+            canvas.drawText("Compilato da: ${data.userName}", MARGIN, y + 11f, textPaint)
+            y += LINE_HEIGHT
+        }
 
         // Linea separatrice
         canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, tablePaint)

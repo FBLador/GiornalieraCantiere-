@@ -117,6 +117,41 @@ class PreferencesRepository @Inject constructor(
             preferences.remove(PreferencesKeys.GOOGLE_DRIVE_ROOT_FOLDER_ID)
             preferences.remove(PreferencesKeys.GOOGLE_DRIVE_ROOT_FOLDER_NAME)
             preferences.remove(PreferencesKeys.GOOGLE_USER_EMAIL)
+            preferences.remove(PreferencesKeys.GOOGLE_USER_DISPLAY_NAME)
+        }
+    }
+
+    // ==================== Setup / Onboarding ====================
+
+    /**
+     * Se il setup iniziale è stato completato
+     */
+    val setupCompleted: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.SETUP_COMPLETED] ?: false
+    }
+
+    /**
+     * Imposta lo stato di completamento del setup
+     */
+    suspend fun setSetupCompleted(completed: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SETUP_COMPLETED] = completed
+        }
+    }
+
+    /**
+     * Display name dell'account Google connesso
+     */
+    val googleUserDisplayName: Flow<String?> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.GOOGLE_USER_DISPLAY_NAME]
+    }
+
+    /**
+     * Imposta il display name dell'utente Google
+     */
+    suspend fun setGoogleUserDisplayName(name: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.GOOGLE_USER_DISPLAY_NAME] = name
         }
     }
 
