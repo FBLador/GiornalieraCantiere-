@@ -260,7 +260,7 @@ class PdfGeneratorService @Inject constructor(
             "Commessa: ${data.commessa.nome}",
             "Cliente: ${data.commessa.cliente}",
             "Cantiere: ${data.cantiere.nome}",
-            "Indirizzo: ${data.cantiere.indirizzo}"
+            //"Indirizzo: ${data.cantiere.indirizzo}"
         )
 
         infoLines.forEach { line ->

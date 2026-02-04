@@ -70,6 +70,7 @@ fun GiornalieraWizardScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var successInfo by remember { mutableStateOf<Triple<String, String?, String?>>(Triple("", null, null)) }
+    var showAnnullaConfirmDialog by remember { mutableStateOf(false) }
 
     val isDetailMode = viewModel.isDetailMode
     val isEditMode = uiState.isEditMode
@@ -274,24 +275,50 @@ fun GiornalieraWizardScreen(
         )
     }
 
+    // Annulla giornaliera (solo Nuova): conferma prima di uscire
+    if (showAnnullaConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showAnnullaConfirmDialog = false },
+            title = { Text("Annullare la giornaliera?") },
+            text = { Text("I dati inseriti andranno persi.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAnnullaConfirmDialog = false
+                        onNavigateBack()
+                    }
+                ) {
+                    Text("Sì, annulla")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAnnullaConfirmDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
-            AppTopBar(
-                title = title,
-                showBack = true,
-                onBackClick = onNavigateBack,
-                actions = {
-                    if (isDetailMode && !isGiornalieraInviata) {
-                        IconButton(onClick = { viewModel.toggleEditMode() }) {
-                            Icon(
-                                imageVector = if (isEditMode) Icons.Default.Close else Icons.Default.Edit,
-                                contentDescription = if (isEditMode) "Annulla modifica" else "Modifica",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
+            if (isDetailMode) {
+                AppTopBar(
+                    title = title,
+                    showBack = true,
+                    onBackClick = onNavigateBack,
+                    actions = {
+                        if (!isGiornalieraInviata) {
+                            IconButton(onClick = { viewModel.toggleEditMode() }) {
+                                Icon(
+                                    imageVector = if (isEditMode) Icons.Default.Close else Icons.Default.Edit,
+                                    contentDescription = if (isEditMode) "Annulla modifica" else "Modifica",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
-                }
-            )
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
@@ -392,6 +419,7 @@ fun GiornalieraWizardScreen(
             WizardNavigationButtons(
                 currentStep = uiState.currentStep,
                 onPreviousClick = { viewModel.previousStep() },
+                onCancelClick = { showAnnullaConfirmDialog = true },
                 onNextClick = { viewModel.nextStep() },
                 onSaveClick = { viewModel.saveGiornaliera() },
                 onSendClick = { viewModel.sendGiornaliera() },
@@ -408,6 +436,7 @@ fun GiornalieraWizardScreen(
 private fun WizardNavigationButtons(
     currentStep: Int,
     onPreviousClick: () -> Unit,
+    onCancelClick: () -> Unit,
     onNextClick: () -> Unit,
     onSaveClick: () -> Unit,
     onSendClick: () -> Unit,
@@ -421,12 +450,21 @@ private fun WizardNavigationButtons(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        if (currentStep > 0) {
-            SecondaryButton(
-                onClick = onPreviousClick,
-                enabled = !isSaving,
-                content = { Text("Indietro") }
-            )
+        when {
+            currentStep == 0 && !isDetailMode -> {
+                SecondaryButton(
+                    onClick = onCancelClick,
+                    enabled = !isSaving,
+                    content = { Text("Annulla") }
+                )
+            }
+            currentStep > 0 -> {
+                SecondaryButton(
+                    onClick = onPreviousClick,
+                    enabled = !isSaving,
+                    content = { Text("Indietro") }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
