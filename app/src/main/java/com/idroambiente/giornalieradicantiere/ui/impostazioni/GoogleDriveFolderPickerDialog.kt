@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -75,7 +79,9 @@ fun GoogleDriveFolderPickerDialog(
             color = MaterialTheme.colorScheme.background
         ) {
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
             ) {
                 // Header
                 FolderPickerHeader(
@@ -322,7 +328,7 @@ private fun FolderPickerFooter(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
