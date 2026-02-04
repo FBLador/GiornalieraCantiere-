@@ -1,58 +1,92 @@
 package com.idroambiente.giornalieradicantiere.ui.theme
 
-import android.app.Activity
-import android.os.Build
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = GreenPrimary,
+    onPrimary = OnPrimaryLight,
+    primaryContainer = GreenMuted,
+    onPrimaryContainer = OnSurfaceLight,
+    secondary = GreenAccent,
+    onSecondary = OnPrimaryLight,
+    secondaryContainer = GreenLighter,
+    onSecondaryContainer = OnSurfaceLight,
+    tertiary = GreenLight,
+    onTertiary = OnPrimaryDark,
+    tertiaryContainer = GreenMuted,
+    onTertiaryContainer = OnSurfaceLight,
+    background = BackgroundLight,
+    onBackground = OnSurfaceLight,
+    surface = BackgroundLight,
+    onSurface = OnSurfaceLight,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = OutlineLight,
+    error = ErrorLight,
+    onError = OnErrorLight,
+    errorContainer = ErrorContainerLight,
+    onErrorContainer = OnErrorContainerLight,
+    inverseSurface = SurfaceDark,
+    inverseOnSurface = OnSurfaceDark,
+    outlineVariant = GreenMuted
+)
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkColorScheme = darkColorScheme(
+    primary = GreenPrimaryDarkTheme,
+    onPrimary = OnPrimaryDark,
+    primaryContainer = GreenMutedDark,
+    onPrimaryContainer = OnSurfaceDark,
+    secondary = GreenAccentDark,
+    onSecondary = OnPrimaryDark,
+    secondaryContainer = GreenPrimaryDarkDarkTheme,
+    onSecondaryContainer = OnSurfaceDark,
+    tertiary = GreenLight,
+    onTertiary = OnPrimaryDark,
+    tertiaryContainer = GreenMutedDark,
+    onTertiaryContainer = OnSurfaceDark,
+    background = BackgroundDark,
+    onBackground = OnSurfaceDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = OutlineDark,
+    error = ErrorDark,
+    onError = OnErrorDark,
+    errorContainer = ErrorContainerDark,
+    onErrorContainer = OnErrorContainerDark,
+    inverseSurface = OnSurfaceDark,
+    inverseOnSurface = OnSurfaceDark,
+    outlineVariant = OutlineDark
+)
+
+private val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(24.dp)
 )
 
 @Composable
 fun GiornalieraDiCantiereTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = AppShapes,
         content = content
     )
 }

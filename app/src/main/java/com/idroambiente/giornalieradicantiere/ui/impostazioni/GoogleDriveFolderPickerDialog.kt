@@ -23,9 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.idroambiente.giornalieradicantiere.services.DriveFolder
+import com.idroambiente.giornalieradicantiere.ui.components.AppFAB
+import com.idroambiente.giornalieradicantiere.ui.components.PrimaryButton
 
 /**
  * Full-screen dialog for navigating and selecting a Google Drive folder.
@@ -119,13 +119,11 @@ fun GoogleDriveFolderPickerDialog(
                         )
                     }
                     
-                    // FAB for creating new folder
-                    FloatingActionButton(
+                    AppFAB(
                         onClick = onShowCreateFolderDialog,
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(16.dp),
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                            .padding(16.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
@@ -280,12 +278,11 @@ private fun FolderPickerFooter(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        Button(
+        PrimaryButton(
             onClick = onSelectFolder,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Seleziona \"$currentFolderName\"")
-        }
+            modifier = Modifier.fillMaxWidth(),
+            content = { Text("Seleziona \"$currentFolderName\"") }
+        )
     }
 }
 

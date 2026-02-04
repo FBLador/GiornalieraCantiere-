@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -28,11 +31,9 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -55,6 +56,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.services.DriveFolder
+import com.idroambiente.giornalieradicantiere.ui.components.AppFAB
+import com.idroambiente.giornalieradicantiere.ui.components.PrimaryButton
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.FolderPickerState
 
 @Composable
@@ -89,6 +92,7 @@ fun SetupScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(innerPadding)
         ) {
             when (uiState.step) {
@@ -240,13 +244,12 @@ private fun WelcomeStep(
         if (isLoading) {
             CircularProgressIndicator()
         } else {
-            Button(
+            PrimaryButton(
                 onClick = onSignIn,
                 enabled = !isOffline,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Connetti con Google")
-            }
+                modifier = Modifier.fillMaxWidth(),
+                content = { Text("Connetti con Google") }
+            )
         }
     }
 }
@@ -447,13 +450,11 @@ private fun FolderSelectionStep(
                 }
             }
 
-            // FAB for creating new folder
-            FloatingActionButton(
+            AppFAB(
                 onClick = onShowCreateFolderDialog,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                    .padding(16.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -479,12 +480,11 @@ private fun FolderSelectionStep(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Button(
+            PrimaryButton(
                 onClick = onSelectFolder,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Seleziona \"${folderPickerState.currentFolderName}\"")
-            }
+                modifier = Modifier.fillMaxWidth(),
+                content = { Text("Seleziona \"${folderPickerState.currentFolderName}\"") }
+            )
         }
     }
 
@@ -586,12 +586,11 @@ private fun CompleteStep(
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        Button(
+        PrimaryButton(
             onClick = onStart,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Inizia")
-        }
+            modifier = Modifier.fillMaxWidth(),
+            content = { Text("Inizia") }
+        )
     }
 }
 

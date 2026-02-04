@@ -11,21 +11,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.idroambiente.giornalieradicantiere.ui.components.AppCard
+import com.idroambiente.giornalieradicantiere.ui.components.AppFAB
+import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
+import com.idroambiente.giornalieradicantiere.ui.components.PrimaryButton
+import com.idroambiente.giornalieradicantiere.ui.components.SecondaryButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,7 +36,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GiornaliereScreen(
     viewModel: GiornaliereViewModel = hiltViewModel(),
@@ -53,27 +49,15 @@ fun GiornaliereScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Giornaliere - ${commessa?.nome ?: ""}") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Indietro"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            AppTopBar(
+                title = "Giornaliere - ${commessa?.nome ?: ""}",
+                showBack = true,
+                onBackClick = onNavigateBack
             )
         },
         floatingActionButton = {
             cantiereId?.let { id ->
-                FloatingActionButton(
-                    onClick = { onNavigateToWizard(id) }
-                ) {
+                AppFAB(onClick = { onNavigateToWizard(id) }) {
                     Icon(Icons.Default.Add, contentDescription = "Nuova Giornaliera")
                 }
             }
@@ -119,12 +103,11 @@ fun GiornaliereScreen(
                 }
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedButton(
+                    SecondaryButton(
                         onClick = { viewModel.generateRiepilogoCommessa() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Riepilogo Commessa")
-                    }
+                        modifier = Modifier.fillMaxWidth(),
+                        content = { Text("Riepilogo Commessa") }
+                    )
                     Spacer(modifier = Modifier.height(80.dp))
                 }
             }
@@ -140,9 +123,9 @@ fun GiornalieraItem(
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
     val formattedDate = dateFormat.format(Date(giornaliera.data))
 
-    Card(
+    AppCard(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        onClick = onOpen
     ) {
         Row(
             modifier = Modifier
@@ -159,7 +142,7 @@ fun GiornalieraItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 StatoGiornalieraChip(stato = giornaliera.stato)
             }
-            Button(onClick = onOpen) {
+            PrimaryButton(onClick = onOpen) {
                 Text("Apri")
             }
         }

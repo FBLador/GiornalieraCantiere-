@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -21,14 +20,11 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -36,8 +32,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
+import com.idroambiente.giornalieradicantiere.ui.components.PrimaryButton
+import com.idroambiente.giornalieradicantiere.ui.components.SecondaryButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,7 +52,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GiornalieraWizardScreen(
     viewModel: GiornalieraWizardViewModel = hiltViewModel(),
@@ -207,13 +203,14 @@ fun GiornalieraWizardScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    showSuccessDialog = false
-                    viewModel.resetPdfStatus()
-                    onNavigateBack()
-                }) {
-                    Text("OK")
-                }
+                PrimaryButton(
+                    onClick = {
+                        showSuccessDialog = false
+                        viewModel.resetPdfStatus()
+                        onNavigateBack()
+                    },
+                    content = { Text("OK") }
+                )
             },
             dismissButton = {
                 successInfo.third?.let { link ->
@@ -247,11 +244,10 @@ fun GiornalieraWizardScreen(
             title = { Text("Configurazione incompleta") },
             text = { Text(uiState.configErrorMessage ?: "") },
             confirmButton = {
-                Button(onClick = {
-                    viewModel.dismissConfigErrorDialog()
-                }) {
-                    Text("OK")
-                }
+                PrimaryButton(
+                    onClick = { viewModel.dismissConfigErrorDialog() },
+                    content = { Text("OK") }
+                )
             }
         )
     }
@@ -270,40 +266,31 @@ fun GiornalieraWizardScreen(
             title = { Text("Connessione non disponibile") },
             text = { Text("Impossibile caricare su Google Drive senza connessione internet. Riprova quando sei online.") },
             confirmButton = {
-                Button(onClick = { viewModel.dismissOfflineDialog() }) {
-                    Text("OK")
-                }
+                PrimaryButton(
+                    onClick = { viewModel.dismissOfflineDialog() },
+                    content = { Text("OK") }
+                )
             }
         )
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Indietro"
-                        )
-                    }
-                },
+            AppTopBar(
+                title = title,
+                showBack = true,
+                onBackClick = onNavigateBack,
                 actions = {
-                    // Show edit button only in detail mode and if not already sent
                     if (isDetailMode && !isGiornalieraInviata) {
                         IconButton(onClick = { viewModel.toggleEditMode() }) {
                             Icon(
                                 imageVector = if (isEditMode) Icons.Default.Close else Icons.Default.Edit,
-                                contentDescription = if (isEditMode) "Annulla modifica" else "Modifica"
+                                contentDescription = if (isEditMode) "Annulla modifica" else "Modifica",
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -435,57 +422,45 @@ private fun WizardNavigationButtons(
             .padding(16.dp)
     ) {
         if (currentStep > 0) {
-            OutlinedButton(
+            SecondaryButton(
                 onClick = onPreviousClick,
-                enabled = !isSaving
-            ) {
-                Text("Indietro")
-            }
+                enabled = !isSaving,
+                content = { Text("Indietro") }
+            )
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
         if (currentStep < 3) {
-            Button(
+            PrimaryButton(
                 onClick = onNextClick,
-                enabled = !isSaving
-            ) {
-                Text("Avanti")
-            }
+                enabled = !isSaving,
+                content = { Text("Avanti") }
+            )
         } else {
-            // Last step - show appropriate buttons based on mode
             when {
-                // Creation mode - show save button
                 !isDetailMode -> {
-                    Button(
+                    PrimaryButton(
                         onClick = onSaveClick,
-                        enabled = !isSaving
-                    ) {
-                        Text("Salva")
-                    }
+                        enabled = !isSaving,
+                        content = { Text("Salva") }
+                    )
                 }
-                // Edit mode - show save button
                 isEditMode -> {
-                    Button(
+                    PrimaryButton(
                         onClick = onSaveClick,
-                        enabled = !isSaving
-                    ) {
-                        Text("Salva")
-                    }
+                        enabled = !isSaving,
+                        content = { Text("Salva") }
+                    )
                 }
-                // View mode and not sent - show send button
                 !isGiornalieraInviata -> {
-                    Button(
+                    PrimaryButton(
                         onClick = onSendClick,
-                        enabled = !isSaving
-                    ) {
-                        Text("Invia")
-                    }
+                        enabled = !isSaving,
+                        content = { Text("Invia") }
+                    )
                 }
-                // View mode and already sent - no action button
-                else -> {
-                    // Nothing to show - already sent
-                }
+                else -> { }
             }
         }
     }
