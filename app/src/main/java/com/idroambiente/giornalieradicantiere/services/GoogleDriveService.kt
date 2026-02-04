@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Collections
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
@@ -63,7 +62,7 @@ class GoogleDriveService @Inject constructor(
         
         val credential = GoogleAccountCredential.usingOAuth2(
             context,
-            Collections.singleton(DriveScopes.DRIVE_FILE)
+            listOf(DriveScopes.DRIVE_READONLY, DriveScopes.DRIVE_FILE)
         ).apply {
             selectedAccount = account.account
         }
@@ -91,6 +90,38 @@ class GoogleDriveService @Inject constructor(
                 val actualParentId = parentId ?: "root"
                 val query = "'$actualParentId' in parents and mimeType = '$MIME_TYPE_FOLDER' and trashed = false"
                 
+                val result = driveService.files().list()
+                    .setQ(query)
+                    .setSpaces("drive")
+                    .setFields("files(id, name)")
+                    .setOrderBy("name")
+                    .execute()
+
+                val folders = result.files?.map { file ->
+                    DriveFolder(
+                        id = file.id,
+                        name = file.name
+                    )
+                } ?: emptyList()
+
+                Result.success(folders)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Lists folders shared with the current user.
+     * @return Result containing list of shared folders or error
+     */
+    suspend fun listSharedFolders(): Result<List<DriveFolder>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                val query = "sharedWithMe = true and mimeType = '$MIME_TYPE_FOLDER' and trashed = false"
                 val result = driveService.files().list()
                     .setQ(query)
                     .setSpaces("drive")

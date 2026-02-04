@@ -35,7 +35,10 @@ class GoogleAuthService @Inject constructor(
     private val googleSignInClient: GoogleSignInClient by lazy {
         val signInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestScopes(Scope(DriveScopes.DRIVE_FILE))
+            .requestScopes(
+                Scope(DriveScopes.DRIVE_READONLY),
+                Scope(DriveScopes.DRIVE_FILE)
+            )
             .build()
         GoogleSignIn.getClient(context, signInOptions)
     }
@@ -129,6 +132,10 @@ class GoogleAuthService @Inject constructor(
      * Checks if the account has the required Drive scopes.
      */
     private fun hasRequiredScopes(account: GoogleSignInAccount): Boolean {
-        return GoogleSignIn.hasPermissions(account, Scope(DriveScopes.DRIVE_FILE))
+        return GoogleSignIn.hasPermissions(
+            account,
+            Scope(DriveScopes.DRIVE_READONLY),
+            Scope(DriveScopes.DRIVE_FILE)
+        )
     }
 }

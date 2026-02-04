@@ -103,6 +103,53 @@ fun GoogleDriveFolderPickerDialog(
                         CircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center)
                         )
+                    } else if (state.currentFolderId == "root") {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            /*item {
+                                Text(
+                                    text = "Il mio Drive",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }*/
+                            if (state.folders.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = "Nessuna cartella",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                            } else {
+                                items(state.folders) { folder ->
+                                    FolderRow(folder = folder, onFolderClick = onNavigateToFolder)
+                                }
+                            }
+                            item {
+                                Text(
+                                    text = "Condivisi con me",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                            if (state.sharedFolders.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = "Nessuna cartella",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                            } else {
+                                items(state.sharedFolders) { folder ->
+                                    FolderRow(folder = folder, onFolderClick = onNavigateToFolder)
+                                }
+                            }
+                        }
                     } else if (state.folders.isEmpty()) {
                         Text(
                             text = "Nessuna sottocartella",
@@ -222,6 +269,38 @@ private fun BreadcrumbsRow(
 }
 
 @Composable
+private fun FolderRow(
+    folder: DriveFolder,
+    onFolderClick: (DriveFolder) -> Unit
+) {
+    ListItem(
+        headlineContent = {
+            Text(
+                text = folder.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        leadingContent = {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        modifier = Modifier.clickable { onFolderClick(folder) }
+    )
+    HorizontalDivider()
+}
+
+@Composable
 private fun FoldersList(
     folders: List<DriveFolder>,
     onFolderClick: (DriveFolder) -> Unit
@@ -230,31 +309,7 @@ private fun FoldersList(
         modifier = Modifier.fillMaxSize()
     ) {
         items(folders) { folder ->
-            ListItem(
-                headlineContent = {
-                    Text(
-                        text = folder.name,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                leadingContent = {
-                    Icon(
-                        imageVector = Icons.Default.Folder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                trailingContent = {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                modifier = Modifier.clickable { onFolderClick(folder) }
-            )
-            HorizontalDivider()
+            FolderRow(folder = folder, onFolderClick = onFolderClick)
         }
     }
 }

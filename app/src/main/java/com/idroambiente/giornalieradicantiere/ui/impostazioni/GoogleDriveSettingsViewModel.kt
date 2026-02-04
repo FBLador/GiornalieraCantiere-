@@ -9,6 +9,8 @@ import com.idroambiente.giornalieradicantiere.services.GoogleAuthService
 import com.idroambiente.giornalieradicantiere.services.GoogleDriveService
 import com.idroambiente.giornalieradicantiere.services.NetworkUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -155,25 +157,72 @@ class GoogleDriveSettingsViewModel @Inject constructor(
                 folderPickerState = _uiState.value.folderPickerState.copy(isLoading = true)
             )
 
-            val result = googleDriveService.listFolders(folderId)
-            
-            result.fold(
-                onSuccess = { folders ->
-                    _uiState.value = _uiState.value.copy(
-                        folderPickerState = _uiState.value.folderPickerState.copy(
-                            folders = folders,
-                            isLoading = false,
-                            currentFolderId = folderId
-                        )
+            if (folderId == "root") {
+                coroutineScope {
+                    val myDriveDeferred = async { googleDriveService.listFolders("root") }
+                    val sharedDeferred = async { googleDriveService.listSharedFolders() }
+                    val myDriveResult = myDriveDeferred.await()
+                    val sharedResult = sharedDeferred.await()
+
+                    myDriveResult.fold(
+                        onSuccess = { folders ->
+                            val sharedFolders = sharedResult.getOrElse { emptyList() }
+                            _uiState.value = _uiState.value.copy(
+                                folderPickerState = _uiState.value.folderPickerState.copy(
+                                    folders = folders,
+                                    sharedFolders = sharedFolders,
+                                    isLoading = false,
+                                    currentFolderId = folderId
+                                )
+                            )
+                        },
+                        onFailure = { error ->
+                            _uiState.value = _uiState.value.copy(
+                                error = error.message,
+                                folderPickerState = _uiState.value.folderPickerState.copy(
+                                    isLoading = false,
+                                    sharedFolders = emptyList()
+                                )
+                            )
+                        }
                     )
-                },
-                onFailure = { error ->
-                    _uiState.value = _uiState.value.copy(
-                        error = error.message,
-                        folderPickerState = _uiState.value.folderPickerState.copy(isLoading = false)
+                    sharedResult.fold(
+                        onFailure = { _ ->
+                            if (myDriveResult.isSuccess) {
+                                _uiState.value = _uiState.value.copy(
+                                    folderPickerState = _uiState.value.folderPickerState.copy(
+                                        sharedFolders = emptyList()
+                                    )
+                                )
+                            }
+                        },
+                        onSuccess = { }
                     )
                 }
-            )
+            } else {
+                val result = googleDriveService.listFolders(folderId)
+                result.fold(
+                    onSuccess = { folders ->
+                        _uiState.value = _uiState.value.copy(
+                            folderPickerState = _uiState.value.folderPickerState.copy(
+                                folders = folders,
+                                sharedFolders = emptyList(),
+                                isLoading = false,
+                                currentFolderId = folderId
+                            )
+                        )
+                    },
+                    onFailure = { error ->
+                        _uiState.value = _uiState.value.copy(
+                            error = error.message,
+                            folderPickerState = _uiState.value.folderPickerState.copy(
+                                isLoading = false,
+                                sharedFolders = emptyList()
+                            )
+                        )
+                    }
+                )
+            }
         }
     }
 
