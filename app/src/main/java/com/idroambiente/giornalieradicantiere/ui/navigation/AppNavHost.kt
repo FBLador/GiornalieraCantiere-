@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.idroambiente.giornalieradicantiere.ui.auth.AuthScreen
 import com.idroambiente.giornalieradicantiere.ui.commesse.CommesseScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.GiornalieraWizardScreen
@@ -20,14 +21,20 @@ fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
-    // TODO: Caricare ultima commessa aperta da DataStore e navigare direttamente
-    // TODO: Aggiungere schermata autenticazione come startDestination
-
     NavHost(
         navController = navController,
-        startDestination = Routes.COMMESSE_LIST,
+        startDestination = Routes.AUTH,
         modifier = modifier
     ) {
+        composable(Routes.AUTH) {
+            AuthScreen(
+                onAuthenticated = {
+                    navController.navigate(Routes.COMMESSE_LIST) {
+                        popUpTo(Routes.AUTH) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Routes.COMMESSE_LIST) {
             CommesseScreen(
                 onNavigateToCommessa = { commessaId ->
