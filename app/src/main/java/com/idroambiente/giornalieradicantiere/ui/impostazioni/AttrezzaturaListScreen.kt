@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +45,7 @@ fun AttrezzaturaListScreen(
 ) {
     val attrezzaturaList by viewModel.attrezzaturaList.collectAsState()
     val showCreateDialog by viewModel.showCreateDialog.collectAsState()
+    val attrezzaturaToEdit by viewModel.attrezzaturaToEdit.collectAsState()
 
     Scaffold(
         topBar = {
@@ -91,6 +93,7 @@ fun AttrezzaturaListScreen(
                 items(attrezzaturaList, key = { it.id }) { attrezzatura ->
                     AttrezzaturaItem(
                         attrezzatura = attrezzatura,
+                        onEdit = { viewModel.showEditDialog(attrezzatura) },
                         onDelete = { viewModel.deleteAttrezzatura(attrezzatura) }
                     )
                 }
@@ -106,12 +109,21 @@ fun AttrezzaturaListScreen(
                 onDismiss = { viewModel.hideCreateDialog() }
             )
         }
+
+        attrezzaturaToEdit?.let { attrezzatura ->
+            EditAttrezzaturaDialog(
+                attrezzatura = attrezzatura,
+                onConfirm = { nome -> viewModel.updateAttrezzatura(nome) },
+                onDismiss = { viewModel.hideEditDialog() }
+            )
+        }
     }
 }
 
 @Composable
 fun AttrezzaturaItem(
     attrezzatura: Attrezzatura,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     AppCard(modifier = Modifier.fillMaxWidth(), onClick = null) {
@@ -126,12 +138,21 @@ fun AttrezzaturaItem(
                 text = attrezzatura.nome,
                 style = MaterialTheme.typography.bodyLarge
             )
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Elimina",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Modifica",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Elimina",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -161,6 +182,41 @@ fun CreateAttrezzaturaDialog(
                 onClick = { onConfirm(nome) },
                 enabled = nome.isNotBlank(),
                 content = { Text("Crea") }
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annulla")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditAttrezzaturaDialog(
+    attrezzatura: Attrezzatura,
+    onConfirm: (nome: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var nome by remember(attrezzatura.id) { mutableStateOf(attrezzatura.nome) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Modifica attrezzatura") },
+        text = {
+            OutlinedTextField(
+                value = nome,
+                onValueChange = { nome = it },
+                label = { Text("Nome") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            PrimaryButton(
+                onClick = { onConfirm(nome) },
+                enabled = nome.isNotBlank(),
+                content = { Text("Salva") }
             )
         },
         dismissButton = {

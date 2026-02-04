@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +45,7 @@ fun MezzoListScreen(
 ) {
     val mezzoList by viewModel.mezzoList.collectAsState()
     val showCreateDialog by viewModel.showCreateDialog.collectAsState()
+    val mezzoToEdit by viewModel.mezzoToEdit.collectAsState()
 
     Scaffold(
         topBar = {
@@ -91,6 +93,7 @@ fun MezzoListScreen(
                 items(mezzoList, key = { it.id }) { mezzo ->
                     MezzoItem(
                         mezzo = mezzo,
+                        onEdit = { viewModel.showEditDialog(mezzo) },
                         onDelete = { viewModel.deleteMezzo(mezzo) }
                     )
                 }
@@ -106,12 +109,21 @@ fun MezzoListScreen(
                 onDismiss = { viewModel.hideCreateDialog() }
             )
         }
+
+        mezzoToEdit?.let { mezzo ->
+            EditMezzoDialog(
+                mezzo = mezzo,
+                onConfirm = { nome, targa -> viewModel.updateMezzo(nome, targa) },
+                onDismiss = { viewModel.hideEditDialog() }
+            )
+        }
     }
 }
 
 @Composable
 fun MezzoItem(
     mezzo: Mezzo,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     AppCard(modifier = Modifier.fillMaxWidth(), onClick = null) {
@@ -133,12 +145,21 @@ fun MezzoItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Elimina",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Modifica",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Elimina",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -178,6 +199,51 @@ fun CreateMezzoDialog(
                 onClick = { onConfirm(nome, targa) },
                 enabled = nome.isNotBlank() && targa.isNotBlank(),
                 content = { Text("Crea") }
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annulla")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditMezzoDialog(
+    mezzo: Mezzo,
+    onConfirm: (nome: String, targa: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var nome by remember(mezzo.id) { mutableStateOf(mezzo.nome) }
+    var targa by remember(mezzo.id) { mutableStateOf(mezzo.targa) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Modifica mezzo") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = nome,
+                    onValueChange = { nome = it },
+                    label = { Text("Nome") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = targa,
+                    onValueChange = { targa = it.uppercase() },
+                    label = { Text("Targa") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            PrimaryButton(
+                onClick = { onConfirm(nome, targa) },
+                enabled = nome.isNotBlank() && targa.isNotBlank(),
+                content = { Text("Salva") }
             )
         },
         dismissButton = {

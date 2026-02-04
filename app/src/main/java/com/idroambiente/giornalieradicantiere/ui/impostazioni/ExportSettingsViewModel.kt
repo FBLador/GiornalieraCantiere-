@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class ExportSettingsUiState(
-    val storageMode: StorageMode = StorageMode.LOCAL,
+    val storageMode: StorageMode = StorageMode.GOOGLE_DRIVE,
     val folderUri: String? = null,
     val folderName: String? = null,
     val exportBehavior: ExportBehavior = ExportBehavior.SHARE,

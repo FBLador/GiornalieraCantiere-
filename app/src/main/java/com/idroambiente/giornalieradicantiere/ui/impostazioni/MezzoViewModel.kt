@@ -28,6 +28,9 @@ class MezzoViewModel @Inject constructor(
     private val _showCreateDialog = MutableStateFlow(false)
     val showCreateDialog: StateFlow<Boolean> = _showCreateDialog.asStateFlow()
 
+    private val _mezzoToEdit = MutableStateFlow<Mezzo?>(null)
+    val mezzoToEdit: StateFlow<Mezzo?> = _mezzoToEdit.asStateFlow()
+
     fun showCreateDialog() {
         _showCreateDialog.value = true
     }
@@ -36,11 +39,29 @@ class MezzoViewModel @Inject constructor(
         _showCreateDialog.value = false
     }
 
+    fun showEditDialog(mezzo: Mezzo) {
+        _mezzoToEdit.value = mezzo
+    }
+
+    fun hideEditDialog() {
+        _mezzoToEdit.value = null
+    }
+
     fun createMezzo(nome: String, targa: String) {
         viewModelScope.launch {
             val mezzo = Mezzo(nome = nome.trim(), targa = targa.trim().uppercase())
             mezzoRepository.insert(mezzo)
             _showCreateDialog.value = false
+        }
+    }
+
+    fun updateMezzo(nome: String, targa: String) {
+        viewModelScope.launch {
+            val current = _mezzoToEdit.value ?: return@launch
+            mezzoRepository.update(
+                current.copy(nome = nome.trim(), targa = targa.trim().uppercase())
+            )
+            _mezzoToEdit.value = null
         }
     }
 

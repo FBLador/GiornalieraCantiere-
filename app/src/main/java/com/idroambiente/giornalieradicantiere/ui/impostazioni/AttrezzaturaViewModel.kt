@@ -28,6 +28,9 @@ class AttrezzaturaViewModel @Inject constructor(
     private val _showCreateDialog = MutableStateFlow(false)
     val showCreateDialog: StateFlow<Boolean> = _showCreateDialog.asStateFlow()
 
+    private val _attrezzaturaToEdit = MutableStateFlow<Attrezzatura?>(null)
+    val attrezzaturaToEdit: StateFlow<Attrezzatura?> = _attrezzaturaToEdit.asStateFlow()
+
     fun showCreateDialog() {
         _showCreateDialog.value = true
     }
@@ -36,11 +39,27 @@ class AttrezzaturaViewModel @Inject constructor(
         _showCreateDialog.value = false
     }
 
+    fun showEditDialog(attrezzatura: Attrezzatura) {
+        _attrezzaturaToEdit.value = attrezzatura
+    }
+
+    fun hideEditDialog() {
+        _attrezzaturaToEdit.value = null
+    }
+
     fun createAttrezzatura(nome: String) {
         viewModelScope.launch {
             val attrezzatura = Attrezzatura(nome = nome.trim())
             attrezzaturaRepository.insert(attrezzatura)
             _showCreateDialog.value = false
+        }
+    }
+
+    fun updateAttrezzatura(nome: String) {
+        viewModelScope.launch {
+            val current = _attrezzaturaToEdit.value ?: return@launch
+            attrezzaturaRepository.update(current.copy(nome = nome.trim()))
+            _attrezzaturaToEdit.value = null
         }
     }
 

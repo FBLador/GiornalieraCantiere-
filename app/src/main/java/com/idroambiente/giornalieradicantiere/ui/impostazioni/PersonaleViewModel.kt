@@ -28,6 +28,9 @@ class PersonaleViewModel @Inject constructor(
     private val _showCreateDialog = MutableStateFlow(false)
     val showCreateDialog: StateFlow<Boolean> = _showCreateDialog.asStateFlow()
 
+    private val _personaleToEdit = MutableStateFlow<Personale?>(null)
+    val personaleToEdit: StateFlow<Personale?> = _personaleToEdit.asStateFlow()
+
     fun showCreateDialog() {
         _showCreateDialog.value = true
     }
@@ -36,11 +39,29 @@ class PersonaleViewModel @Inject constructor(
         _showCreateDialog.value = false
     }
 
+    fun showEditDialog(personale: Personale) {
+        _personaleToEdit.value = personale
+    }
+
+    fun hideEditDialog() {
+        _personaleToEdit.value = null
+    }
+
     fun createPersonale(nome: String, cognome: String) {
         viewModelScope.launch {
             val personale = Personale(nome = nome.trim(), cognome = cognome.trim())
             personaleRepository.insert(personale)
             _showCreateDialog.value = false
+        }
+    }
+
+    fun updatePersonale(nome: String, cognome: String) {
+        viewModelScope.launch {
+            val current = _personaleToEdit.value ?: return@launch
+            personaleRepository.update(
+                current.copy(nome = nome.trim(), cognome = cognome.trim())
+            )
+            _personaleToEdit.value = null
         }
     }
 

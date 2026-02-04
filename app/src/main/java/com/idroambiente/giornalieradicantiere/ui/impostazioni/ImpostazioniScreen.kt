@@ -143,7 +143,7 @@ fun ImpostazioniScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Sezione Salvataggio PDF - Selettore modalità
-            StorageModeSelector(
+            /*StorageModeSelector(
                 currentMode = exportSettingsState.storageMode,
                 onModeSelected = { mode ->
                     if (mode == exportSettingsState.storageMode) return@StorageModeSelector
@@ -161,6 +161,7 @@ fun ImpostazioniScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+            */
 
             // Sezione configurazione specifica per modalità
             when (exportSettingsState.storageMode) {

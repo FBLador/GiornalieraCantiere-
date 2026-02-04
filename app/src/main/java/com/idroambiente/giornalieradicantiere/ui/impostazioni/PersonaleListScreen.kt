@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +45,7 @@ fun PersonaleListScreen(
 ) {
     val personaleList by viewModel.personaleList.collectAsState()
     val showCreateDialog by viewModel.showCreateDialog.collectAsState()
+    val personaleToEdit by viewModel.personaleToEdit.collectAsState()
 
     Scaffold(
         topBar = {
@@ -91,6 +93,7 @@ fun PersonaleListScreen(
                 items(personaleList, key = { it.id }) { personale ->
                     PersonaleItem(
                         personale = personale,
+                        onEdit = { viewModel.showEditDialog(personale) },
                         onDelete = { viewModel.deletePersonale(personale) }
                     )
                 }
@@ -106,12 +109,21 @@ fun PersonaleListScreen(
                 onDismiss = { viewModel.hideCreateDialog() }
             )
         }
+
+        personaleToEdit?.let { personale ->
+            EditPersonaleDialog(
+                personale = personale,
+                onConfirm = { nome, cognome -> viewModel.updatePersonale(nome, cognome) },
+                onDismiss = { viewModel.hideEditDialog() }
+            )
+        }
     }
 }
 
 @Composable
 fun PersonaleItem(
     personale: Personale,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     AppCard(modifier = Modifier.fillMaxWidth(), onClick = null) {
@@ -126,12 +138,21 @@ fun PersonaleItem(
                 text = "${personale.nome} ${personale.cognome}",
                 style = MaterialTheme.typography.bodyLarge
             )
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Elimina",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Modifica",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Elimina",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -171,6 +192,51 @@ fun CreatePersonaleDialog(
                 onClick = { onConfirm(nome, cognome) },
                 enabled = nome.isNotBlank() && cognome.isNotBlank(),
                 content = { Text("Crea") }
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annulla")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditPersonaleDialog(
+    personale: Personale,
+    onConfirm: (nome: String, cognome: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var nome by remember(personale.id) { mutableStateOf(personale.nome) }
+    var cognome by remember(personale.id) { mutableStateOf(personale.cognome) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Modifica persona") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = nome,
+                    onValueChange = { nome = it },
+                    label = { Text("Nome") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = cognome,
+                    onValueChange = { cognome = it },
+                    label = { Text("Cognome") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            PrimaryButton(
+                onClick = { onConfirm(nome, cognome) },
+                enabled = nome.isNotBlank() && cognome.isNotBlank(),
+                content = { Text("Salva") }
             )
         },
         dismissButton = {
