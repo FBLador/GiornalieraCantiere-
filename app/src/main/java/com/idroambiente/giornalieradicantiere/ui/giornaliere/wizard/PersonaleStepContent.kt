@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -606,13 +607,14 @@ private fun TimePickerField(
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
     val displayValue = if (value > 0) formatTimeFromMillis(value) else ""
 
     // Extract hours and minutes from current value
     val currentHour = if (value > 0) ((value / 1000 / 60 / 60) % 24).toInt() else 8
     val currentMinute = if (value > 0) ((value / 1000 / 60) % 60).toInt() else 0
 
-    Box(modifier = modifier.clickable { showDialog = true }) {
+    Box(modifier = modifier.clickable { focusManager.clearFocus(); showDialog = true }) {
         OutlinedTextField(
             value = displayValue,
             onValueChange = { },
