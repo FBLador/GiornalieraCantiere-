@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Cache directory for temporary PDF files -->
+    <cache-path
+        name="pdf_cache"
+        path="/" />
+    
+    <!-- External files directory for exported PDFs -->
+    <external-files-path
+        name="pdf_exports"
+        path="exports/" />
+</paths>

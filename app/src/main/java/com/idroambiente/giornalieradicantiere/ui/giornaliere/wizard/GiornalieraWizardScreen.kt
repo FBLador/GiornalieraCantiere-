@@ -1,17 +1,26 @@
 package com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,18 +30,30 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +65,15 @@ fun GiornalieraWizardScreen(
     val personaleList by viewModel.personaleList.collectAsState()
     val mezzoList by viewModel.mezzoList.collectAsState()
     val attrezzaturaList by viewModel.attrezzaturaList.collectAsState()
+
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    
+    var showErrorDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var successInfo by remember { mutableStateOf<Triple<String, String?, String?>>(Triple("", null, null)) }
 
     val isDetailMode = viewModel.isDetailMode
     val isEditMode = uiState.isEditMode
@@ -59,10 +89,192 @@ fun GiornalieraWizardScreen(
     // Check if giornaliera is already sent
     val isGiornalieraInviata = uiState.giornaliera?.stato == StatoGiornaliera.INVIATA
 
-    LaunchedEffect(uiState.saveCompleted) {
-        if (uiState.saveCompleted) {
+    // Handle PDF status changes
+    LaunchedEffect(uiState.pdfStatus) {
+        when (val status = uiState.pdfStatus) {
+            is PdfStatus.Success -> {
+                successInfo = Triple(status.fileName, status.folderName, status.webViewLink)
+                showSuccessDialog = true
+            }
+            is PdfStatus.ReadyToShare -> {
+                try {
+                    context.startActivity(status.shareIntent)
+                    viewModel.confirmCompletion()
+                } catch (e: Exception) {
+                    errorMessage = "Impossibile aprire le opzioni di condivisione"
+                    showErrorDialog = true
+                }
+            }
+            is PdfStatus.SavedAndReadyToShare -> {
+                // Show snackbar for save success, then launch share
+                scope.launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "PDF salvato in ${status.folderName ?: "cartella"}",
+                        actionLabel = "Condividi",
+                        duration = SnackbarDuration.Long
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        try {
+                            context.startActivity(status.shareIntent)
+                        } catch (e: Exception) {
+                            // Ignore share error
+                        }
+                    }
+                    viewModel.confirmCompletion()
+                }
+            }
+            is PdfStatus.Error -> {
+                errorMessage = status.message ?: "Errore sconosciuto"
+                showErrorDialog = true
+            }
+            else -> { /* Idle, Generating, Saving - handled by UI */ }
+        }
+    }
+
+    // Navigate back when completed (but not for PDF states that need user interaction)
+    LaunchedEffect(uiState.saveCompleted, uiState.pdfStatus) {
+        if (uiState.saveCompleted && uiState.pdfStatus is PdfStatus.Idle) {
             onNavigateBack()
         }
+    }
+
+    // Error Dialog
+    if (showErrorDialog && errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                showErrorDialog = false
+                viewModel.resetPdfStatus()
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Errore") },
+            text = { Text(errorMessage ?: "") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showErrorDialog = false
+                    viewModel.resetPdfStatus()
+                    onNavigateBack()
+                }) {
+                    Text("Chiudi")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showErrorDialog = false
+                    viewModel.resetPdfStatus()
+                }) {
+                    Text("Riprova")
+                }
+            }
+        )
+    }
+
+    // Success Dialog
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSuccessDialog = false
+                viewModel.resetPdfStatus()
+                onNavigateBack()
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { Text("Giornaliera Inviata") },
+            text = {
+                Column {
+                    Text("Il PDF è stato generato e salvato con successo.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "File: ${successInfo.first}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    successInfo.second?.let { folder ->
+                        Text(
+                            text = "Cartella: $folder",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showSuccessDialog = false
+                    viewModel.resetPdfStatus()
+                    onNavigateBack()
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                successInfo.third?.let { link ->
+                    TextButton(onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                            context.startActivity(intent)
+                        } catch (_: Exception) { }
+                        showSuccessDialog = false
+                        viewModel.resetPdfStatus()
+                        onNavigateBack()
+                    }) {
+                        Text("Apri su Drive")
+                    }
+                }
+            }
+        )
+    }
+
+    // Configuration error dialog
+    if (uiState.showConfigErrorDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissConfigErrorDialog() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Configurazione incompleta") },
+            text = { Text(uiState.configErrorMessage ?: "") },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.dismissConfigErrorDialog()
+                }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // Offline dialog
+    if (uiState.showOfflineDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissOfflineDialog() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.WifiOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Connessione non disponibile") },
+            text = { Text("Impossibile caricare su Google Drive senza connessione internet. Riprova quando sei online.") },
+            confirmButton = {
+                Button(onClick = { viewModel.dismissOfflineDialog() }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -93,7 +305,8 @@ fun GiornalieraWizardScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -159,12 +372,30 @@ fun GiornalieraWizardScreen(
                     }
                 }
 
-                if (uiState.isSaving) {
+                // Show loading overlay for saving/PDF generation
+                if (uiState.isOperationInProgress) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = when (uiState.pdfStatus) {
+                                    is PdfStatus.Generating -> "Generazione PDF..."
+                                    is PdfStatus.Saving -> "Salvataggio in corso..."
+                                    else -> "Salvataggio..."
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -177,7 +408,7 @@ fun GiornalieraWizardScreen(
                 onNextClick = { viewModel.nextStep() },
                 onSaveClick = { viewModel.saveGiornaliera() },
                 onSendClick = { viewModel.sendGiornaliera() },
-                isSaving = uiState.isSaving,
+                isSaving = uiState.isOperationInProgress,
                 isDetailMode = isDetailMode,
                 isEditMode = isEditMode,
                 isGiornalieraInviata = isGiornalieraInviata
