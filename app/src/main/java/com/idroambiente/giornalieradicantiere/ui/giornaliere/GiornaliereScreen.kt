@@ -41,7 +41,8 @@ fun GiornaliereScreen(
     viewModel: GiornaliereViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {},
     onNavigateToGiornaliera: (Long, Long) -> Unit = { _, _ -> },
-    onNavigateToWizard: (Long) -> Unit = {}
+    onNavigateToWizard: (Long) -> Unit = {},
+    onNavigateToRiepilogoCommessa: (Long) -> Unit = {}
 ) {
     val commessa by viewModel.commessa.collectAsState()
     val giornaliere by viewModel.giornaliere.collectAsState()
@@ -104,7 +105,7 @@ fun GiornaliereScreen(
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     SecondaryButton(
-                        onClick = { viewModel.generateRiepilogoCommessa() },
+                        onClick = { onNavigateToRiepilogoCommessa(viewModel.commessaId) },
                         modifier = Modifier.fillMaxWidth(),
                         content = { Text("Riepilogo Commessa") }
                     )

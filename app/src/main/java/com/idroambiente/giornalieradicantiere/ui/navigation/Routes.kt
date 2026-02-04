@@ -9,8 +9,11 @@ object Routes {
     const val PERSONALE_LIST = "personale_list"
     const val MEZZO_LIST = "mezzo_list"
     const val ATTREZZATURA_LIST = "attrezzatura_list"
+    const val RIEPILOGO_COMMESSA = "riepilogo_commessa/{commessaId}"
 
     fun giornaliereList(commessaId: Long) = "giornaliere_list/$commessaId"
+
+    fun riepilogoCommessa(commessaId: Long) = "riepilogo_commessa/$commessaId"
 
     fun giornalieraWizard(cantiereId: Long, giornalieraId: Long? = null): String {
         return if (giornalieraId != null) {

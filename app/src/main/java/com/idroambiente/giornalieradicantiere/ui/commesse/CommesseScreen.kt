@@ -56,6 +56,7 @@ import com.idroambiente.giornalieradicantiere.database.entities.StatoCommessa
 fun CommesseScreen(
     viewModel: CommesseViewModel = hiltViewModel(),
     onNavigateToCommessa: (Long) -> Unit = {},
+    onNavigateToRiepilogoCommessa: (Long) -> Unit = {},
     onNavigateToImpostazioni: () -> Unit = {}
 ) {
     val commesse by viewModel.commesse.collectAsState()
@@ -125,7 +126,7 @@ fun CommesseScreen(
                                 viewModel.openCommessa(commessa.id)
                                 onNavigateToCommessa(commessa.id)
                             },
-                            onRiepilogo = { viewModel.generateRiepilogo(commessa.id) }
+                            onRiepilogo = { onNavigateToRiepilogoCommessa(commessa.id) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(80.dp)) }

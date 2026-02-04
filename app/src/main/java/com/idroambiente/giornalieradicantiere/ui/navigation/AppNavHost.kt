@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.idroambiente.giornalieradicantiere.data.preferences.PreferencesRepository
 import com.idroambiente.giornalieradicantiere.ui.commesse.CommesseScreen
+import com.idroambiente.giornalieradicantiere.ui.commesse.RiepilogoCommessaScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.GiornalieraWizardScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.AttrezzaturaListScreen
@@ -61,6 +62,9 @@ fun AppNavHost(
                 onNavigateToCommessa = { commessaId ->
                     navController.navigate(Routes.giornaliereList(commessaId))
                 },
+                onNavigateToRiepilogoCommessa = { commessaId ->
+                    navController.navigate(Routes.riepilogoCommessa(commessaId))
+                },
                 onNavigateToImpostazioni = {
                     navController.navigate(Routes.IMPOSTAZIONI)
                 }
@@ -78,7 +82,19 @@ fun AppNavHost(
                 },
                 onNavigateToWizard = { cantiereId ->
                     navController.navigate(Routes.giornalieraWizard(cantiereId))
+                },
+                onNavigateToRiepilogoCommessa = { commessaId ->
+                    navController.navigate(Routes.riepilogoCommessa(commessaId))
                 }
+            )
+        }
+
+        composable(
+            route = Routes.RIEPILOGO_COMMESSA,
+            arguments = listOf(navArgument("commessaId") { type = NavType.LongType })
+        ) {
+            RiepilogoCommessaScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
