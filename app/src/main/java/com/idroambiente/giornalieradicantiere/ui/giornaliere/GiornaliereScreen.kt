@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
+import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -51,7 +52,7 @@ fun GiornaliereScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Giornaliere - ${commessa?.nome ?: ""}",
+                title = "Giornaliere - ${commessa?.let { formatCommessaNome(it.nome) } ?: ""}",
                 showBack = true,
                 onBackClick = onNavigateBack
             )

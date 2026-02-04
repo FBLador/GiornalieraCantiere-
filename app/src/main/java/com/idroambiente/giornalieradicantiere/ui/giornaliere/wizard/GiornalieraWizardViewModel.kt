@@ -33,6 +33,7 @@ import com.idroambiente.giornalieradicantiere.services.PdfGeneratorService
 import com.idroambiente.giornalieradicantiere.services.PdfRiepilogoData
 import com.idroambiente.giornalieradicantiere.services.PersonaleWithData
 import com.idroambiente.giornalieradicantiere.services.SaveResult
+import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -499,7 +500,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                 }
 
                 val pdfData = collectPdfData(existingGiornaliera)
-                val commessaNome = pdfData.commessa.nome
+                val commessaNome = formatCommessaNome(pdfData.commessa.nome)
                 val giornalieraData = existingGiornaliera.data
 
                 // 2. Genera PDF

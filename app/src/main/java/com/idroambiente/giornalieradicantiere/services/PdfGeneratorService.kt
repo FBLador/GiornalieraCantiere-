@@ -14,6 +14,7 @@ import com.idroambiente.giornalieradicantiere.database.entities.Mezzo
 import com.idroambiente.giornalieradicantiere.database.entities.MezzoGiornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.Personale
 import com.idroambiente.giornalieradicantiere.database.entities.PersonaleGiornaliera
+import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -257,7 +258,7 @@ class PdfGeneratorService @Inject constructor(
         y += 25f
 
         val infoLines = listOf(
-            "Commessa: ${data.commessa.nome}",
+            "Commessa: ${formatCommessaNome(data.commessa.nome)}",
             "Cliente: ${data.commessa.cliente}",
             "Cantiere: ${data.cantiere.nome}",
             //"Indirizzo: ${data.cantiere.indirizzo}"

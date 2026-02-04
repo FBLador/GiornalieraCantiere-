@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.Commessa
 import com.idroambiente.giornalieradicantiere.database.entities.StatoCommessa
+import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
 
 @Composable
 fun CommesseScreen(
@@ -173,7 +174,7 @@ fun CommessaItem(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${commessa.nome.take(4)}-${commessa.nome.substring(4)}",
+                        text = formatCommessaNome(commessa.nome),
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))

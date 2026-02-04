@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
 import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
+import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.StatoGiornalieraChip
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -45,7 +46,7 @@ fun RiepilogoCommessaScreen(
     Scaffold(
         topBar = {
             AppTopBar(
-                title = "Riepilogo - ${commessa?.nome ?: "Commessa"}",
+                title = "Riepilogo - ${commessa?.let { formatCommessaNome(it.nome) } ?: "Commessa"}",
                 showBack = true,
                 onBackClick = onNavigateBack
             )
@@ -108,7 +109,7 @@ fun RiepilogoCommessaScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             commessa?.let { c ->
                                 Text(
-                                    text = c.nome,
+                                    text = formatCommessaNome(c.nome),
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
