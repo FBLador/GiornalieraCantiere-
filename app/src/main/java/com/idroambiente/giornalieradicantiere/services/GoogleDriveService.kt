@@ -220,9 +220,43 @@ class GoogleDriveService @Inject constructor(
     }
 
     /**
+     * Finds or creates a subfolder within a parent folder.
+     * @param name The name of the subfolder
+     * @param parentId The ID of the parent folder
+     * @return Result containing the subfolder ID or error
+     */
+    private suspend fun getOrCreateSubfolder(
+        name: String,
+        parentId: String
+    ): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                val query = "'$parentId' in parents and name = '$name' and mimeType = '$MIME_TYPE_FOLDER' and trashed = false"
+                val result = driveService.files().list()
+                    .setQ(query)
+                    .setSpaces("drive")
+                    .setFields("files(id)")
+                    .execute()
+
+                val existing = result.files?.firstOrNull()
+                if (existing != null) {
+                    Result.success(existing.id)
+                } else {
+                    createFolder(name, parentId)
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
      * Uploads a PDF file for a giornaliera, organizing it by commessa.
-     * Creates the commessa folder if it doesn't exist.
-     * 
+     * Creates the commessa folder and Giornaliere subfolder if they don't exist.
+     *
      * @param pdfFile The PDF file to upload
      * @param commessaNome The name of the commessa
      * @param data Timestamp of the giornaliera (used for file naming)
@@ -244,13 +278,85 @@ class GoogleDriveService @Inject constructor(
                 val commessaFolderId = getOrCreateCommessaFolder(commessaNome, rootFolderId)
                     .getOrElse { return@withContext Result.failure(it) }
 
+                // Get or create Giornaliere subfolder
+                val giornaliereFolderId = getOrCreateSubfolder("Giornaliere", commessaFolderId)
+                    .getOrElse { return@withContext Result.failure(it) }
+
                 val sanitizedCommessaNome = sanitizeFolderName(commessaNome)
                 val fileName = generateFileName(sanitizedCommessaNome, data)
 
                 // Create file metadata
                 val fileMetadata = DriveFile().apply {
                     name = fileName
-                    parents = listOf(commessaFolderId)
+                    parents = listOf(giornaliereFolderId)
+                }
+
+                // Upload file
+                val mediaContent = FileContent(MIME_TYPE_PDF, pdfFile)
+                val uploadedFile = driveService.files().create(fileMetadata, mediaContent)
+                    .setFields("id, name, webViewLink")
+                    .execute()
+
+                Result.success(
+                    UploadResult(
+                        fileId = uploadedFile.id,
+                        fileName = uploadedFile.name,
+                        folderName = sanitizedCommessaNome,
+                        webViewLink = uploadedFile.webViewLink
+                    )
+                )
+            } catch (e: GoogleJsonResponseException) {
+                val message = when (e.statusCode) {
+                    404 -> "La cartella selezionata non esiste più. Selezionane una nuova nelle impostazioni."
+                    403 -> "Permessi insufficienti. Prova a disconnetterti e riconnetterti."
+                    507 -> "Spazio Google Drive esaurito."
+                    else -> "Errore Google Drive (${e.statusCode}). Riprova."
+                }
+                Result.failure(Exception(message, e))
+            } catch (e: java.net.UnknownHostException) {
+                Result.failure(Exception("Errore di rete. Verifica la connessione e riprova.", e))
+            } catch (e: java.io.IOException) {
+                Result.failure(Exception("Errore di rete. Riprova.", e))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Uploads a riepilogo PDF for a commessa into the Riepiloghi subfolder.
+     *
+     * @param pdfFile The PDF file to upload
+     * @param commessaNome The name of the commessa
+     * @param fileName The desired file name for the PDF
+     * @param rootFolderId The ID of the root folder
+     * @return Result containing upload details or error
+     */
+    suspend fun uploadRiepilogoPdfForCommessa(
+        pdfFile: File,
+        commessaNome: String,
+        fileName: String,
+        rootFolderId: String
+    ): Result<UploadResult> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                // Get or create commessa folder
+                val commessaFolderId = getOrCreateCommessaFolder(commessaNome, rootFolderId)
+                    .getOrElse { return@withContext Result.failure(it) }
+
+                // Get or create Riepiloghi subfolder
+                val riepiloghiFolderId = getOrCreateSubfolder("Riepiloghi", commessaFolderId)
+                    .getOrElse { return@withContext Result.failure(it) }
+
+                val sanitizedCommessaNome = sanitizeFolderName(commessaNome)
+
+                // Create file metadata
+                val fileMetadata = DriveFile().apply {
+                    name = fileName
+                    parents = listOf(riepiloghiFolderId)
                 }
 
                 // Upload file

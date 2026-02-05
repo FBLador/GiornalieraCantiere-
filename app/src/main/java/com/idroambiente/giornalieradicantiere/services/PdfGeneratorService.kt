@@ -56,6 +56,30 @@ data class PdfRiepilogoData(
 )
 
 /**
+ * Dati di una singola giornaliera per il riepilogo commessa
+ */
+data class RiepilogoGiornalieraItem(
+    val data: Long,
+    val stato: String
+)
+
+/**
+ * Dati necessari per generare il PDF del riepilogo commessa
+ */
+data class RiepilogoCommessaPdfData(
+    val commessaNome: String,
+    val cliente: String,
+    val indirizzo: String,
+    val stato: String,
+    val totaleOreLavoro: Float,
+    val totaleOreViaggio: Float,
+    val totaleKm: Float,
+    val giornaliere: List<RiepilogoGiornalieraItem>,
+    val startDate: Long? = null,
+    val endDate: Long? = null
+)
+
+/**
  * Tutti i dati necessari per generare il PDF di una giornaliera
  */
 data class GiornalieraPdfData(
@@ -515,5 +539,206 @@ class PdfGeneratorService @Inject constructor(
         val h = ((millis / 1000 / 60 / 60) % 24).toInt()
         val m = ((millis / 1000 / 60) % 60).toInt()
         return String.format("%02d:%02d", h, m)
+    }
+
+    /**
+     * Genera il PDF di riepilogo commessa e lo salva nella cache dell'app
+     * @return Il file PDF generato
+     */
+    suspend fun generateRiepilogoCommessaPdf(data: RiepilogoCommessaPdfData): File = withContext(Dispatchers.IO) {
+        val state = PdfState(PdfDocument())
+
+        state.startNewPage()
+
+        // Titolo
+        state.yPosition = drawRiepilogoHeader(state.canvas!!, data, state.yPosition)
+        state.yPosition += SECTION_SPACING
+
+        // Info Commessa
+        state.yPosition = drawRiepilogoCommessaInfo(state.canvas!!, data, state.yPosition)
+        state.yPosition += SECTION_SPACING
+
+        // Box Totali
+        state.checkNewPage(120f)
+        state.yPosition = drawRiepilogoTotali(state.canvas!!, data, state.yPosition)
+        state.yPosition += SECTION_SPACING
+
+        // Tabella Giornaliere
+        state.checkNewPage(80f)
+        state.yPosition = drawRiepilogoGiornaliereTable(state, data.giornaliere, state.yPosition)
+        state.yPosition += SECTION_SPACING
+
+        // Footer
+        state.checkNewPage(40f)
+        drawRiepilogoFooter(state.canvas!!, state.yPosition)
+
+        // Finalizza
+        state.finalize()
+
+        // Genera il nome file
+        val sanitizedCommessa = formatCommessaNome(data.commessaNome)
+            .replace(Regex("[^a-zA-Z0-9\\-]"), "_")
+        val fileName = generateRiepilogoFileName(sanitizedCommessa, data.startDate, data.endDate)
+
+        val outputFile = File(context.cacheDir, fileName)
+        FileOutputStream(outputFile).use { out ->
+            state.document.writeTo(out)
+        }
+        state.document.close()
+
+        outputFile
+    }
+
+    /**
+     * Genera il nome file per il riepilogo
+     */
+    fun generateRiepilogoFileName(commessaNome: String, startDate: Long?, endDate: Long?): String {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.ITALY)
+        val sanitized = commessaNome
+            .replace(Regex("[\\\\/:*?\"<>|]"), "")
+            .replace(Regex("\\s+"), "_")
+            .trim()
+            .take(50)
+            .ifEmpty { "Commessa" }
+        return if (startDate != null || endDate != null) {
+            val from = startDate?.let { dateFormat.format(Date(it)) } ?: "inizio"
+            val to = endDate?.let { dateFormat.format(Date(it)) } ?: "fine"
+            "Riepilogo_${sanitized}_${from}_${to}.pdf"
+        } else {
+            "Riepilogo_${sanitized}_completo.pdf"
+        }
+    }
+
+    private fun drawRiepilogoHeader(canvas: Canvas, data: RiepilogoCommessaPdfData, startY: Float): Float {
+        var y = startY
+
+        canvas.drawText("RIEPILOGO COMMESSA", MARGIN, y + 24f, titlePaint)
+        y += 35f
+
+        // Periodo
+        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
+        val periodoText = if (data.startDate != null || data.endDate != null) {
+            val from = data.startDate?.let { dateFormat.format(Date(it)) } ?: "inizio"
+            val to = data.endDate?.let { dateFormat.format(Date(it)) } ?: "oggi"
+            "Periodo: $from - $to"
+        } else {
+            "Periodo: completo"
+        }
+        canvas.drawText(periodoText, MARGIN, y + 14f, headerPaint)
+        y += 25f
+
+        // Linea separatrice
+        canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, tablePaint)
+        y += 10f
+
+        return y
+    }
+
+    private fun drawRiepilogoCommessaInfo(canvas: Canvas, data: RiepilogoCommessaPdfData, startY: Float): Float {
+        var y = startY
+
+        canvas.drawText("INFORMAZIONI COMMESSA", MARGIN, y + 14f, headerPaint)
+        y += 25f
+
+        val infoLines = mutableListOf(
+            "Commessa: ${formatCommessaNome(data.commessaNome)}",
+            "Cliente: ${data.cliente}",
+        )
+        if (data.indirizzo.isNotBlank()) {
+            infoLines.add("Indirizzo: ${data.indirizzo}")
+        }
+        infoLines.add("Stato: ${data.stato}")
+
+        infoLines.forEach { line ->
+            canvas.drawText(line, MARGIN, y + 11f, textPaint)
+            y += LINE_HEIGHT
+        }
+
+        return y
+    }
+
+    private fun drawRiepilogoTotali(canvas: Canvas, data: RiepilogoCommessaPdfData, startY: Float): Float {
+        var y = startY
+
+        canvas.drawText("TOTALI", MARGIN, y + 14f, headerPaint)
+        y += 25f
+
+        val boxHeight = 60f
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + boxHeight, tableHeaderBgPaint)
+        canvas.drawRect(MARGIN, y, PAGE_WIDTH - MARGIN, y + boxHeight, tablePaint)
+
+        y += 20f
+        val col1X = MARGIN + 20f
+        val col2X = MARGIN + 200f
+        val col3X = MARGIN + 380f
+
+        canvas.drawText("Ore lavoro: ${formatHours(data.totaleOreLavoro)}", col1X, y, textPaint)
+        canvas.drawText("Ore viaggio: ${formatHours(data.totaleOreViaggio)}", col2X, y, textPaint)
+        canvas.drawText("KM totali: ${formatKm(data.totaleKm)}", col3X, y, textPaint)
+        y += 20f
+
+        canvas.drawText("Totale giornaliere: ${data.giornaliere.size}", col1X, y, textPaint)
+
+        return startY + 25f + boxHeight + 10f
+    }
+
+    private fun drawRiepilogoGiornaliereTable(
+        state: PdfState,
+        giornaliere: List<RiepilogoGiornalieraItem>,
+        startY: Float
+    ): Float {
+        var y = startY
+
+        state.canvas!!.drawText("ELENCO GIORNALIERE", MARGIN, y + 14f, headerPaint)
+        y += 25f
+
+        if (giornaliere.isEmpty()) {
+            state.canvas!!.drawText("Nessuna giornaliera presente", MARGIN, y + 11f, smallTextPaint)
+            return y + LINE_HEIGHT
+        }
+
+        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
+
+        // Header tabella
+        val colWidths = floatArrayOf(200f, 200f)
+        val headers = arrayOf("Data", "Stato")
+
+        state.canvas!!.drawRect(MARGIN, y, MARGIN + colWidths[0] + colWidths[1], y + 20f, tableHeaderBgPaint)
+
+        var x = MARGIN + 5f
+        headers.forEachIndexed { index, header ->
+            state.canvas!!.drawText(header, x, y + 14f, smallTextPaint)
+            x += colWidths[index]
+        }
+        y += 22f
+
+        // Righe
+        giornaliere.forEach { item ->
+            state.yPosition = y
+            state.checkNewPage(25f)
+            y = state.yPosition
+
+            x = MARGIN + 5f
+            state.canvas!!.drawText(dateFormat.format(Date(item.data)), x, y + 11f, textPaint)
+            x += colWidths[0]
+            state.canvas!!.drawText(item.stato, x, y + 11f, textPaint)
+
+            y += LINE_HEIGHT
+        }
+
+        return y
+    }
+
+    private fun drawRiepilogoFooter(canvas: Canvas, startY: Float): Float {
+        var y = startY
+
+        canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, tablePaint)
+        y += 15f
+
+        val timestampFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY)
+        val timestamp = timestampFormat.format(Date())
+        canvas.drawText("Documento generato il: $timestamp", MARGIN, y + 10f, smallTextPaint)
+
+        return y + LINE_HEIGHT
     }
 }

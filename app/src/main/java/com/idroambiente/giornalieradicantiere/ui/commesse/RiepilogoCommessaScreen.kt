@@ -1,5 +1,7 @@
 package com.idroambiente.giornalieradicantiere.ui.commesse
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -40,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,6 +70,15 @@ fun RiepilogoCommessaScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val startDate by viewModel.startDate.collectAsState()
     val endDate by viewModel.endDate.collectAsState()
+
+    // PDF export states
+    val pdfExporting by viewModel.pdfExporting.collectAsState()
+    val pdfExportSuccess by viewModel.pdfExportSuccess.collectAsState()
+    val pdfExportError by viewModel.pdfExportError.collectAsState()
+    val showConfigError by viewModel.showConfigError.collectAsState()
+    val showOfflineDialog by viewModel.showOfflineDialog.collectAsState()
+
+    val context = LocalContext.current
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
@@ -127,18 +143,20 @@ fun RiepilogoCommessaScreen(
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
-                            Text(
-                                text = "Dati commessa",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
                             commessa?.let { c ->
-                                Text(
-                                    text = formatCommessaNome(c.nome),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = formatCommessaNome(c.nome),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    StatoChip(stato = c.stato)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "Cliente: ${c.cliente}",
                                     style = MaterialTheme.typography.bodyMedium,
@@ -152,8 +170,24 @@ fun RiepilogoCommessaScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                StatoChip(stato = c.stato)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Button(
+                                    onClick = { viewModel.exportPdf() },
+                                    enabled = !pdfExporting,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (pdfExporting) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Esportazione in corso...")
+                                    } else {
+                                        Text("Esporta PDF riepilogo")
+                                    }
+                                }
                             }
                         }
                     }
@@ -295,6 +329,92 @@ fun RiepilogoCommessaScreen(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    // PDF Export Success Dialog
+    pdfExportSuccess?.let { result ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissExportSuccess() },
+            title = { Text("PDF esportato") },
+            text = {
+                Column {
+                    Text("File: ${result.fileName}")
+                    if (result.folderName != null) {
+                        Text("Cartella: ${result.folderName}")
+                    }
+                }
+            },
+            confirmButton = {
+                if (result.webViewLink != null) {
+                    TextButton(onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(result.webViewLink))
+                        context.startActivity(intent)
+                        viewModel.dismissExportSuccess()
+                    }) {
+                        Text("Apri su Drive")
+                    }
+                }
+                TextButton(onClick = { viewModel.dismissExportSuccess() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // PDF Export Error Dialog
+    pdfExportError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissExportError() },
+            title = { Text("Errore esportazione") },
+            text = { Text(error) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissExportError() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // Config Error Dialog
+    showConfigError?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissConfigError() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Configurazione incompleta") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissConfigError() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // Offline Dialog
+    if (showOfflineDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissOfflineDialog() },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.WifiOff,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Connessione non disponibile") },
+            text = { Text("Per esportare su Google Drive è necessaria una connessione a internet. Verifica la connessione e riprova.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissOfflineDialog() }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 

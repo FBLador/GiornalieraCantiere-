@@ -162,6 +162,61 @@ class FileStorageService @Inject constructor(
     }
 
     /**
+     * Salva il PDF riepilogo in base alla modalità configurata (Google Drive o Locale)
+     * @param pdfFile Il file PDF da salvare (dalla cache)
+     * @param commessaNome Nome della commessa (per organizzazione Google Drive)
+     * @param fileName Nome del file PDF (es: Riepilogo_Commessa_X_2024-01-15_2024-01-31.pdf)
+     * @return Risultato dell'operazione
+     */
+    suspend fun saveRiepilogoPdf(
+        pdfFile: File,
+        commessaNome: String,
+        fileName: String
+    ): SaveResult = withContext(Dispatchers.IO) {
+        val mode = preferencesRepository.storageMode.first()
+
+        when (mode) {
+            StorageMode.GOOGLE_DRIVE -> {
+                val rootFolderId = preferencesRepository.googleDriveRootFolderId.first()
+
+                if (rootFolderId.isNullOrEmpty()) {
+                    return@withContext SaveResult.Error("Cartella Google Drive non configurata")
+                }
+
+                val result = googleDriveService.uploadRiepilogoPdfForCommessa(
+                    pdfFile = pdfFile,
+                    commessaNome = commessaNome,
+                    fileName = fileName,
+                    rootFolderId = rootFolderId
+                )
+
+                result.fold(
+                    onSuccess = { uploadResult ->
+                        pdfFile.delete()
+                        SaveResult.Success(
+                            uri = null,
+                            fileName = uploadResult.fileName,
+                            folderName = uploadResult.folderName,
+                            webViewLink = uploadResult.webViewLink
+                        )
+                    },
+                    onFailure = { error ->
+                        SaveResult.Error(error.message ?: "Errore durante l'upload su Google Drive")
+                    }
+                )
+            }
+            StorageMode.LOCAL -> {
+                // Rinomina il file con il nome desiderato
+                val renamedFile = File(pdfFile.parent, fileName)
+                if (pdfFile.name != fileName) {
+                    pdfFile.renameTo(renamedFile)
+                }
+                savePdfToConfiguredFolder(renamedFile)
+            }
+        }
+    }
+
+    /**
      * Crea un Intent per condividere il PDF
      * @param pdfFile Il file PDF da condividere (dalla cache)
      * @return Intent configurato per la condivisione
