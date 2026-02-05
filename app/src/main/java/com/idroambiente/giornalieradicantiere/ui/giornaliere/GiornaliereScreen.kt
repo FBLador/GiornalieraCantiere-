@@ -154,7 +154,7 @@ fun GiornalieraItem(
 @Composable
 fun StatoGiornalieraChip(stato: StatoGiornaliera) {
     val (backgroundColor, textColor) = when (stato) {
-        StatoGiornaliera.BOZZA -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        StatoGiornaliera.BOZZA -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onError
         StatoGiornaliera.COMPLETATA -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
         StatoGiornaliera.INVIATA -> MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     }

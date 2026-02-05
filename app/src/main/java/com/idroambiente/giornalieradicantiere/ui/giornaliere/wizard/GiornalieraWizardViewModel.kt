@@ -462,160 +462,224 @@ class GiornalieraWizardViewModel @Inject constructor(
 
     fun sendGiornaliera() {
         viewModelScope.launch {
-            try {
-                // 0. Pre-validation: check configuration is valid before anything
-                val storageMode = preferencesRepository.storageMode.first()
-                val exportBehavior = if (storageMode == StorageMode.GOOGLE_DRIVE) {
-                    ExportBehavior.SAVE
-                } else {
-                    preferencesRepository.exportBehavior.first()
-                }
+            val existingGiornaliera = _uiState.value.giornaliera
+                ?: return@launch
 
-                // Validate configuration
-                val validationError = validateExportConfiguration(storageMode, exportBehavior)
-                if (validationError != null) {
+            // Se siamo in edit mode, salva prima le modifiche nel DB
+            if (_uiState.value.isEditMode) {
+                _uiState.update { it.copy(isSaving = true) }
+                try {
+                    giornalieraRepository.update(
+                        existingGiornaliera.copy(
+                            note = _uiState.value.note.ifBlank { null },
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    )
+
+                    // Delete existing relations and re-insert
+                    personaleGiornalieraRepository.deleteByGiornalieraId(existingGiornaliera.id)
+                    mezzoGiornalieraRepository.deleteByGiornalieraId(existingGiornaliera.id)
+                    attrezzaturaGiornalieraRepository.deleteByGiornalieraId(existingGiornaliera.id)
+
+                    saveRelations(existingGiornaliera.id)
+                    _uiState.update { it.copy(isSaving = false) }
+                } catch (e: Exception) {
                     _uiState.update {
                         it.copy(
-                            showConfigErrorDialog = true,
-                            configErrorMessage = validationError
+                            isSaving = false,
+                            pdfStatus = PdfStatus.Error(e.message ?: "Errore durante il salvataggio")
                         )
                     }
                     return@launch
                 }
+            }
 
-                // Network check for Google Drive
-                if (storageMode == StorageMode.GOOGLE_DRIVE && !networkUtils.isOnline()) {
-                    _uiState.update { it.copy(showOfflineDialog = true) }
-                    return@launch
-                }
+            performSend(existingGiornaliera)
+        }
+    }
 
-                _uiState.update { it.copy(isSaving = true, pdfStatus = PdfStatus.Generating) }
+    fun saveAndSendGiornaliera() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+            try {
+                // 1. Salva la giornaliera nel DB come BOZZA
+                val giornaliera = Giornaliera(
+                    cantiereId = cantiereId,
+                    data = System.currentTimeMillis(),
+                    stato = StatoGiornaliera.BOZZA,
+                    note = _uiState.value.note.ifBlank { null }
+                )
+                val newId = giornalieraRepository.insert(giornaliera)
 
-                // 1. Raccogli tutti i dati per il PDF (prima di cambiare stato)
-                val existingGiornaliera = if (giornalieraId != null) {
-                    _uiState.value.giornaliera
-                        ?: throw Exception("Giornaliera non trovata")
-                } else {
-                    throw Exception("ID giornaliera non valido")
-                }
+                // 2. Salva le relazioni
+                saveRelations(newId)
 
-                val pdfData = collectPdfData(existingGiornaliera)
-                val commessaNome = formatCommessaNome(pdfData.commessa.nome)
-                val giornalieraData = existingGiornaliera.data
+                // 3. Ricarica l'entità salvata dal DB
+                val savedGiornaliera = giornalieraRepository.getById(newId)
+                    ?: throw Exception("Giornaliera appena salvata non trovata")
 
-                // 2. Genera PDF
-                val pdfFile = pdfGeneratorService.generateGiornalieraPdf(pdfData)
+                _uiState.update { it.copy(giornaliera = savedGiornaliera, isSaving = false) }
 
-                // 3. Salva/Condividi in base alle preferenze
-                when (exportBehavior) {
-                    ExportBehavior.SAVE -> {
-                        _uiState.update { it.copy(pdfStatus = PdfStatus.Saving) }
-                        val saveResult = fileStorageService.savePdf(pdfFile, commessaNome, giornalieraData)
-                        when (saveResult) {
-                            is SaveResult.Success -> {
-                                // Aggiorna stato a INVIATA solo dopo salvataggio riuscito
-                                markAsInviata(existingGiornaliera)
-                                _uiState.update {
-                                    it.copy(
-                                        isSaving = false,
-                                        saveCompleted = true,
-                                        pdfStatus = PdfStatus.Success(
-                                            uri = saveResult.uri,
-                                            fileName = saveResult.fileName,
-                                            folderName = saveResult.folderName,
-                                            webViewLink = saveResult.webViewLink
-                                        )
-                                    )
-                                }
-                            }
-                            is SaveResult.Error -> {
-                                // Fallback: salva localmente
-                                val localResult = fileStorageService.savePdfToAppStorage(pdfFile)
-                                when (localResult) {
-                                    is SaveResult.Success -> {
-                                        markAsInviata(existingGiornaliera)
-                                        _uiState.update {
-                                            it.copy(
-                                                isSaving = false,
-                                                saveCompleted = true,
-                                                pdfStatus = PdfStatus.Success(
-                                                    uri = localResult.uri,
-                                                    fileName = localResult.fileName,
-                                                    folderName = "memoria locale"
-                                                )
-                                            )
-                                        }
-                                    }
-                                    is SaveResult.Error -> {
-                                        _uiState.update {
-                                            it.copy(
-                                                isSaving = false,
-                                                pdfStatus = PdfStatus.Error(localResult.message)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    ExportBehavior.SHARE -> {
-                        markAsInviata(existingGiornaliera)
-                        val shareIntent = fileStorageService.createShareChooserIntent(pdfFile)
-                        _uiState.update {
-                            it.copy(
-                                isSaving = false,
-                                saveCompleted = true,
-                                pdfStatus = PdfStatus.ReadyToShare(shareIntent, pdfFile)
-                            )
-                        }
-                    }
-                    ExportBehavior.BOTH -> {
-                        _uiState.update { it.copy(pdfStatus = PdfStatus.Saving) }
-
-                        // Copia il file cache prima del salvataggio per evitare doppia generazione
-                        val pdfCopy = File(pdfFile.parent, "share_${pdfFile.name}")
-                        pdfFile.copyTo(pdfCopy, overwrite = true)
-
-                        val saveResult = fileStorageService.savePdf(pdfFile, commessaNome, giornalieraData)
-                        val shareIntent = fileStorageService.createShareChooserIntent(pdfCopy)
-
-                        when (saveResult) {
-                            is SaveResult.Success -> {
-                                markAsInviata(existingGiornaliera)
-                                _uiState.update {
-                                    it.copy(
-                                        isSaving = false,
-                                        saveCompleted = true,
-                                        pdfStatus = PdfStatus.SavedAndReadyToShare(
-                                            uri = saveResult.uri,
-                                            fileName = saveResult.fileName,
-                                            folderName = saveResult.folderName,
-                                            shareIntent = shareIntent
-                                        )
-                                    )
-                                }
-                            }
-                            is SaveResult.Error -> {
-                                markAsInviata(existingGiornaliera)
-                                // Salvataggio fallito ma condividi comunque
-                                _uiState.update {
-                                    it.copy(
-                                        isSaving = false,
-                                        saveCompleted = true,
-                                        pdfStatus = PdfStatus.ReadyToShare(shareIntent, pdfCopy)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                // 4. Esegui l'invio (PDF + export)
+                performSend(savedGiornaliera)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isSaving = false,
-                        pdfStatus = PdfStatus.Error(e.message ?: "Errore durante l'invio")
+                        pdfStatus = PdfStatus.Error(e.message ?: "Errore durante il salvataggio")
                     )
                 }
+            }
+        }
+    }
+
+    private suspend fun performSend(giornaliera: Giornaliera) {
+        try {
+            // 0. Pre-validation: check configuration is valid before anything
+            val storageMode = preferencesRepository.storageMode.first()
+            val exportBehavior = if (storageMode == StorageMode.GOOGLE_DRIVE) {
+                ExportBehavior.SAVE
+            } else {
+                preferencesRepository.exportBehavior.first()
+            }
+
+            // Validate configuration
+            val validationError = validateExportConfiguration(storageMode, exportBehavior)
+            if (validationError != null) {
+                _uiState.update {
+                    it.copy(
+                        showConfigErrorDialog = true,
+                        configErrorMessage = validationError
+                    )
+                }
+                return
+            }
+
+            // Network check for Google Drive
+            if (storageMode == StorageMode.GOOGLE_DRIVE && !networkUtils.isOnline()) {
+                _uiState.update { it.copy(showOfflineDialog = true) }
+                return
+            }
+
+            _uiState.update { it.copy(isSaving = true, pdfStatus = PdfStatus.Generating) }
+
+            // 1. Raccogli tutti i dati per il PDF (prima di cambiare stato)
+            val pdfData = collectPdfData(giornaliera)
+            val commessaNome = formatCommessaNome(pdfData.commessa.nome)
+            val giornalieraData = giornaliera.data
+
+            // 2. Genera PDF
+            val pdfFile = pdfGeneratorService.generateGiornalieraPdf(pdfData)
+
+            // 3. Salva/Condividi in base alle preferenze
+            when (exportBehavior) {
+                ExportBehavior.SAVE -> {
+                    _uiState.update { it.copy(pdfStatus = PdfStatus.Saving) }
+                    val saveResult = fileStorageService.savePdf(pdfFile, commessaNome, giornalieraData)
+                    when (saveResult) {
+                        is SaveResult.Success -> {
+                            // Aggiorna stato a INVIATA solo dopo salvataggio riuscito
+                            markAsInviata(giornaliera)
+                            _uiState.update {
+                                it.copy(
+                                    isSaving = false,
+                                    saveCompleted = true,
+                                    pdfStatus = PdfStatus.Success(
+                                        uri = saveResult.uri,
+                                        fileName = saveResult.fileName,
+                                        folderName = saveResult.folderName,
+                                        webViewLink = saveResult.webViewLink
+                                    )
+                                )
+                            }
+                        }
+                        is SaveResult.Error -> {
+                            // Fallback: salva localmente
+                            val localResult = fileStorageService.savePdfToAppStorage(pdfFile)
+                            when (localResult) {
+                                is SaveResult.Success -> {
+                                    markAsInviata(giornaliera)
+                                    _uiState.update {
+                                        it.copy(
+                                            isSaving = false,
+                                            saveCompleted = true,
+                                            pdfStatus = PdfStatus.Success(
+                                                uri = localResult.uri,
+                                                fileName = localResult.fileName,
+                                                folderName = "memoria locale"
+                                            )
+                                        )
+                                    }
+                                }
+                                is SaveResult.Error -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            isSaving = false,
+                                            pdfStatus = PdfStatus.Error(localResult.message)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                ExportBehavior.SHARE -> {
+                    markAsInviata(giornaliera)
+                    val shareIntent = fileStorageService.createShareChooserIntent(pdfFile)
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            saveCompleted = true,
+                            pdfStatus = PdfStatus.ReadyToShare(shareIntent, pdfFile)
+                        )
+                    }
+                }
+                ExportBehavior.BOTH -> {
+                    _uiState.update { it.copy(pdfStatus = PdfStatus.Saving) }
+
+                    // Copia il file cache prima del salvataggio per evitare doppia generazione
+                    val pdfCopy = File(pdfFile.parent, "share_${pdfFile.name}")
+                    pdfFile.copyTo(pdfCopy, overwrite = true)
+
+                    val saveResult = fileStorageService.savePdf(pdfFile, commessaNome, giornalieraData)
+                    val shareIntent = fileStorageService.createShareChooserIntent(pdfCopy)
+
+                    when (saveResult) {
+                        is SaveResult.Success -> {
+                            markAsInviata(giornaliera)
+                            _uiState.update {
+                                it.copy(
+                                    isSaving = false,
+                                    saveCompleted = true,
+                                    pdfStatus = PdfStatus.SavedAndReadyToShare(
+                                        uri = saveResult.uri,
+                                        fileName = saveResult.fileName,
+                                        folderName = saveResult.folderName,
+                                        shareIntent = shareIntent
+                                    )
+                                )
+                            }
+                        }
+                        is SaveResult.Error -> {
+                            markAsInviata(giornaliera)
+                            // Salvataggio fallito ma condividi comunque
+                            _uiState.update {
+                                it.copy(
+                                    isSaving = false,
+                                    saveCompleted = true,
+                                    pdfStatus = PdfStatus.ReadyToShare(shareIntent, pdfCopy)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    isSaving = false,
+                    pdfStatus = PdfStatus.Error(e.message ?: "Errore durante l'invio")
+                )
             }
         }
     }

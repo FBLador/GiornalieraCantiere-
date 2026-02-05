@@ -12,13 +12,13 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface GiornalieraDao {
-    @Query("SELECT * FROM giornaliera ORDER BY data DESC")
+    @Query("SELECT * FROM giornaliera ORDER BY CASE WHEN stato = 'BOZZA' THEN 0 ELSE 1 END, data DESC")
     fun getAll(): Flow<List<Giornaliera>>
 
     @Query("SELECT * FROM giornaliera WHERE id = :id")
     suspend fun getById(id: Long): Giornaliera?
 
-    @Query("SELECT * FROM giornaliera WHERE cantiereId = :cantiereId ORDER BY data DESC")
+    @Query("SELECT * FROM giornaliera WHERE cantiereId = :cantiereId ORDER BY CASE WHEN stato = 'BOZZA' THEN 0 ELSE 1 END, data DESC")
     fun getByCantiereId(cantiereId: Long): Flow<List<Giornaliera>>
 
     @Query("SELECT * FROM giornaliera WHERE data = :data ORDER BY id DESC")

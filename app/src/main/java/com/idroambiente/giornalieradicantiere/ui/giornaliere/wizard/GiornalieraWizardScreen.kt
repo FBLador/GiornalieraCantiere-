@@ -2,6 +2,7 @@ package com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +76,11 @@ fun GiornalieraWizardScreen(
     val isDetailMode = viewModel.isDetailMode
     val isEditMode = uiState.isEditMode
     val isReadOnly = isDetailMode && !isEditMode
+
+    // Intercetta back gesture in modalità creazione
+    BackHandler(enabled = !isDetailMode || isEditMode) {
+        showAnnullaConfirmDialog = true
+    }
 
     // Determine title based on mode
     val title = when {
@@ -275,25 +281,35 @@ fun GiornalieraWizardScreen(
         )
     }
 
-    // Annulla giornaliera (solo Nuova): conferma prima di uscire
+    // Uscita dalla creazione: salva bozza / scarta / annulla
     if (showAnnullaConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showAnnullaConfirmDialog = false },
-            title = { Text("Annullare la giornaliera?") },
-            text = { Text("I dati inseriti andranno persi.") },
+            title = { Text("Uscire dalla giornaliera?") },
+            text = { Text("Puoi salvare come bozza e continuare in un secondo momento.") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showAnnullaConfirmDialog = false
-                        onNavigateBack()
+                        viewModel.saveGiornaliera()
                     }
                 ) {
-                    Text("Sì, annulla")
+                    Text("Salva bozza")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAnnullaConfirmDialog = false }) {
-                    Text("No")
+                Row {
+                    TextButton(onClick = { showAnnullaConfirmDialog = false }) {
+                        Text("Annulla")
+                    }
+                    TextButton(
+                        onClick = {
+                            showAnnullaConfirmDialog = false
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text("Scarta")
+                    }
                 }
             }
         )
@@ -423,6 +439,7 @@ fun GiornalieraWizardScreen(
                 onNextClick = { viewModel.nextStep() },
                 onSaveClick = { viewModel.saveGiornaliera() },
                 onSendClick = { viewModel.sendGiornaliera() },
+                onSaveAndSendClick = { viewModel.saveAndSendGiornaliera() },
                 isSaving = uiState.isOperationInProgress,
                 isDetailMode = isDetailMode,
                 isEditMode = isEditMode,
@@ -440,6 +457,7 @@ private fun WizardNavigationButtons(
     onNextClick: () -> Unit,
     onSaveClick: () -> Unit,
     onSendClick: () -> Unit,
+    onSaveAndSendClick: () -> Unit,
     isSaving: Boolean,
     isDetailMode: Boolean,
     isEditMode: Boolean,
@@ -451,7 +469,7 @@ private fun WizardNavigationButtons(
             .padding(16.dp)
     ) {
         when {
-            currentStep == 0 && !isDetailMode -> {
+            currentStep == 0 && (!isDetailMode || isEditMode) -> {
                 SecondaryButton(
                     onClick = onCancelClick,
                     enabled = !isSaving,
@@ -479,16 +497,16 @@ private fun WizardNavigationButtons(
             when {
                 !isDetailMode -> {
                     PrimaryButton(
-                        onClick = onSaveClick,
+                        onClick = onSaveAndSendClick,
                         enabled = !isSaving,
-                        content = { Text("Salva") }
+                        content = { Text("Invia") }
                     )
                 }
                 isEditMode -> {
                     PrimaryButton(
-                        onClick = onSaveClick,
+                        onClick = onSendClick,
                         enabled = !isSaving,
-                        content = { Text("Salva") }
+                        content = { Text("Invia") }
                     )
                 }
                 !isGiornalieraInviata -> {
