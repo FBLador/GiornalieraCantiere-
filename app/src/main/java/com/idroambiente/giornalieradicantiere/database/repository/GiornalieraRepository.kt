@@ -4,6 +4,7 @@ import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraDao
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
 import kotlinx.coroutines.flow.Flow
+import java.util.Calendar
 
 class GiornalieraRepository(private val giornalieraDao: GiornalieraDao) {
     fun getAll(): Flow<List<Giornaliera>> = giornalieraDao.getAll()
@@ -29,4 +30,22 @@ class GiornalieraRepository(private val giornalieraDao: GiornalieraDao) {
     suspend fun deleteById(id: Long) = giornalieraDao.deleteById(id)
 
     suspend fun deleteAll() = giornalieraDao.deleteAll()
+
+    suspend fun existsForCantiereAndDay(cantiereId: Long, date: Long): Boolean {
+        val normalizedDate = normalizeToStartOfDay(date)
+        val endOfDay = normalizedDate + 86_399_999L
+        val existing = giornalieraDao.getByCantiereIdAndDateRange(cantiereId, normalizedDate, endOfDay)
+        return existing.isNotEmpty()
+    }
+
+    private fun normalizeToStartOfDay(timestamp: Long): Long {
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = timestamp
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return calendar.timeInMillis
+    }
 }

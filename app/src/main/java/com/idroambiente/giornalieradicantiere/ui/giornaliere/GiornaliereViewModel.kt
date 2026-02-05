@@ -57,6 +57,9 @@ class GiornaliereViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     init {
         loadData()
     }
@@ -96,18 +99,33 @@ class GiornaliereViewModel @Inject constructor(
             val cantiereId = _cantiereId.value
             if (cantiereId == null) {
                 Log.e(TAG, "Impossibile creare giornaliera: cantiereId non disponibile")
+                _errorMessage.value = "Impossibile creare giornaliera: cantiere non disponibile"
+                return@launch
+            }
+
+            val currentTime = System.currentTimeMillis()
+            
+            // Check for duplicate giornaliera for same cantiere on same day
+            if (giornalieraRepository.existsForCantiereAndDay(cantiereId, currentTime)) {
+                Log.e(TAG, "Giornaliera duplicata: esiste già una giornaliera per questo cantiere in questa data")
+                _errorMessage.value = "Esiste già una giornaliera per questo cantiere in questa data"
                 return@launch
             }
 
             Log.d(TAG, "Creazione nuova giornaliera per cantiere: $cantiereId")
             val giornaliera = Giornaliera(
                 cantiereId = cantiereId,
-                data = System.currentTimeMillis(),
+                data = currentTime,
                 stato = StatoGiornaliera.BOZZA
             )
             val id = giornalieraRepository.insert(giornaliera)
             Log.d(TAG, "Giornaliera creata con id: $id")
+            _errorMessage.value = null
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 
     fun openGiornaliera(giornalieraId: Long) {

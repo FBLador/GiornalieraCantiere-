@@ -95,7 +95,8 @@ data class WizardUiState(
     val pdfStatus: PdfStatus = PdfStatus.Idle,
     val showConfigErrorDialog: Boolean = false,
     val configErrorMessage: String? = null,
-    val showOfflineDialog: Boolean = false
+    val showOfflineDialog: Boolean = false,
+    val duplicateError: String? = null
 ) {
     val isOperationInProgress: Boolean
         get() = isSaving || pdfStatus is PdfStatus.Generating || pdfStatus is PdfStatus.Saving
@@ -399,9 +400,22 @@ class GiornalieraWizardViewModel @Inject constructor(
                     }
                 } else {
                     // Create new giornaliera
+                    val currentTime = System.currentTimeMillis()
+                    
+                    // Check for duplicate giornaliera for same cantiere on same day
+                    if (giornalieraRepository.existsForCantiereAndDay(cantiereId, currentTime)) {
+                        _uiState.update { 
+                            it.copy(
+                                isSaving = false,
+                                duplicateError = "Esiste già una giornaliera per questo cantiere in questa data"
+                            )
+                        }
+                        return@launch
+                    }
+                    
                     val giornaliera = Giornaliera(
                         cantiereId = cantiereId,
-                        data = System.currentTimeMillis(),
+                        data = currentTime,
                         stato = StatoGiornaliera.BOZZA,
                         note = _uiState.value.note.ifBlank { null }
                     )
@@ -503,9 +517,23 @@ class GiornalieraWizardViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true) }
             try {
                 // 1. Salva la giornaliera nel DB come BOZZA
+                val currentTime = System.currentTimeMillis()
+                
+                // Check for duplicate giornaliera for same cantiere on same day
+                if (giornalieraRepository.existsForCantiereAndDay(cantiereId, currentTime)) {
+                    _uiState.update { 
+                        it.copy(
+                            isSaving = false,
+                            duplicateError = "Esiste già una giornaliera per questo cantiere in questa data",
+                            pdfStatus = PdfStatus.Error("Esiste già una giornaliera per questo cantiere in questa data")
+                        )
+                    }
+                    return@launch
+                }
+                
                 val giornaliera = Giornaliera(
                     cantiereId = cantiereId,
-                    data = System.currentTimeMillis(),
+                    data = currentTime,
                     stato = StatoGiornaliera.BOZZA,
                     note = _uiState.value.note.ifBlank { null }
                 )
@@ -729,6 +757,10 @@ class GiornalieraWizardViewModel @Inject constructor(
 
     fun dismissOfflineDialog() {
         _uiState.update { it.copy(showOfflineDialog = false) }
+    }
+
+    fun clearDuplicateError() {
+        _uiState.update { it.copy(duplicateError = null) }
     }
 
     /**

@@ -134,6 +134,14 @@ fun GiornalieraWizardScreen(
         }
     }
 
+    // Handle duplicate error
+    LaunchedEffect(uiState.duplicateError) {
+        uiState.duplicateError?.let { error ->
+            errorMessage = error
+            showErrorDialog = true
+        }
+    }
+
     // Navigate back when completed (but not for PDF states that need user interaction)
     LaunchedEffect(uiState.saveCompleted, uiState.pdfStatus) {
         if (uiState.saveCompleted && uiState.pdfStatus is PdfStatus.Idle) {
@@ -146,7 +154,9 @@ fun GiornalieraWizardScreen(
         AlertDialog(
             onDismissRequest = { 
                 showErrorDialog = false
+                errorMessage = null
                 viewModel.resetPdfStatus()
+                viewModel.clearDuplicateError()
             },
             icon = {
                 Icon(
@@ -160,18 +170,16 @@ fun GiornalieraWizardScreen(
             confirmButton = {
                 TextButton(onClick = { 
                     showErrorDialog = false
+                    errorMessage = null
                     viewModel.resetPdfStatus()
-                    onNavigateBack()
+                    viewModel.clearDuplicateError()
+                    if (uiState.duplicateError != null) {
+                        // Don't navigate back for duplicate errors, just close dialog
+                    } else {
+                        onNavigateBack()
+                    }
                 }) {
-                    Text("Chiudi")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    showErrorDialog = false
-                    viewModel.resetPdfStatus()
-                }) {
-                    Text("Riprova")
+                    Text("OK")
                 }
             }
         )

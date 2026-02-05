@@ -12,18 +12,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import com.idroambiente.giornalieradicantiere.ui.components.AppCard
 import com.idroambiente.giornalieradicantiere.ui.components.AppFAB
 import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
 import com.idroambiente.giornalieradicantiere.ui.components.PrimaryButton
 import com.idroambiente.giornalieradicantiere.ui.components.SecondaryButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -48,6 +52,7 @@ fun GiornaliereScreen(
     val commessa by viewModel.commessa.collectAsState()
     val giornaliere by viewModel.giornaliere.collectAsState()
     val cantiereId by viewModel.cantiereId.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold(
         topBar = {
@@ -113,6 +118,27 @@ fun GiornaliereScreen(
                     Spacer(modifier = Modifier.height(80.dp))
                 }
             }
+        }
+
+        // Error Dialog
+        errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                title = { Text("Errore") },
+                text = { Text(error) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text("OK")
+                    }
+                }
+            )
         }
     }
 }

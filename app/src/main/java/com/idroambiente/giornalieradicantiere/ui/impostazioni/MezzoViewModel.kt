@@ -31,6 +31,9 @@ class MezzoViewModel @Inject constructor(
     private val _mezzoToEdit = MutableStateFlow<Mezzo?>(null)
     val mezzoToEdit: StateFlow<Mezzo?> = _mezzoToEdit.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     fun showCreateDialog() {
         _showCreateDialog.value = true
     }
@@ -49,7 +52,17 @@ class MezzoViewModel @Inject constructor(
 
     fun createMezzo(nome: String, targa: String) {
         viewModelScope.launch {
-            val mezzo = Mezzo(nome = nome.trim(), targa = targa.trim().uppercase())
+            _errorMessage.value = null
+            val trimmedTarga = targa.trim().uppercase()
+            
+            // Check for duplicate targa
+            val existingMezzo = mezzoRepository.getByTarga(trimmedTarga)
+            if (existingMezzo != null) {
+                _errorMessage.value = "Esiste già un mezzo con questa targa"
+                return@launch
+            }
+
+            val mezzo = Mezzo(nome = nome.trim(), targa = trimmedTarga)
             mezzoRepository.insert(mezzo)
             _showCreateDialog.value = false
         }
@@ -57,9 +70,19 @@ class MezzoViewModel @Inject constructor(
 
     fun updateMezzo(nome: String, targa: String) {
         viewModelScope.launch {
+            _errorMessage.value = null
             val current = _mezzoToEdit.value ?: return@launch
+            val trimmedTarga = targa.trim().uppercase()
+            
+            // Check for duplicate targa (excluding current mezzo)
+            val existingMezzo = mezzoRepository.getByTarga(trimmedTarga)
+            if (existingMezzo != null && existingMezzo.id != current.id) {
+                _errorMessage.value = "Esiste già un mezzo con questa targa"
+                return@launch
+            }
+
             mezzoRepository.update(
-                current.copy(nome = nome.trim(), targa = targa.trim().uppercase())
+                current.copy(nome = nome.trim(), targa = trimmedTarga)
             )
             _mezzoToEdit.value = null
         }
@@ -69,5 +92,9 @@ class MezzoViewModel @Inject constructor(
         viewModelScope.launch {
             mezzoRepository.delete(mezzo)
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 }

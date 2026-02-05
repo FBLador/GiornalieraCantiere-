@@ -40,6 +40,9 @@ class CommesseViewModel @Inject constructor(
     private val _showCreateDialog = MutableStateFlow(false)
     val showCreateDialog: StateFlow<Boolean> = _showCreateDialog.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     fun showCreateDialog() {
         _showCreateDialog.value = true
     }
@@ -51,7 +54,17 @@ class CommesseViewModel @Inject constructor(
     fun createCommessa(nome: String, cliente: String, indirizzo: String) {
         viewModelScope.launch {
             _isLoading.value = true
+            _errorMessage.value = null
             try {
+                // Check for duplicate commessa name
+                val existingCommessa = commessaRepository.getByNome(nome)
+                if (existingCommessa != null) {
+                    Log.e(TAG, "Commessa duplicata: esiste già una commessa con nome: $nome")
+                    _errorMessage.value = "Esiste già una commessa con questo nome"
+                    _isLoading.value = false
+                    return@launch
+                }
+
                 val commessa = Commessa(
                     nome = nome,
                     cliente = cliente,
@@ -72,10 +85,15 @@ class CommesseViewModel @Inject constructor(
                 hideCreateDialog()
             } catch (e: Exception) {
                 Log.e(TAG, "Errore creazione commessa", e)
+                _errorMessage.value = "Errore durante la creazione della commessa: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 
     fun openCommessa(commessaId: Long) {

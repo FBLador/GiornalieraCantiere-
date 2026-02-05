@@ -24,6 +24,9 @@ interface CommessaDao {
     @Query("SELECT * FROM commessa WHERE nome LIKE '%' || :query || '%' OR cliente LIKE '%' || :query || '%' ORDER BY id DESC")
     fun search(query: String): Flow<List<Commessa>>
 
+    @Query("SELECT * FROM commessa WHERE nome = :nome")
+    suspend fun getByNome(nome: String): Commessa?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(commessa: Commessa): Long
 

@@ -27,6 +27,9 @@ interface GiornalieraDao {
     @Query("SELECT * FROM giornaliera WHERE data BETWEEN :startDate AND :endDate ORDER BY data DESC")
     fun getByDateRange(startDate: Long, endDate: Long): Flow<List<Giornaliera>>
 
+    @Query("SELECT * FROM giornaliera WHERE cantiereId = :cantiereId AND data BETWEEN :startDate AND :endDate")
+    suspend fun getByCantiereIdAndDateRange(cantiereId: Long, startDate: Long, endDate: Long): List<Giornaliera>
+
     @Query("SELECT * FROM giornaliera WHERE stato = :stato ORDER BY data DESC")
     fun getByStato(stato: StatoGiornaliera): Flow<List<Giornaliera>>
 
