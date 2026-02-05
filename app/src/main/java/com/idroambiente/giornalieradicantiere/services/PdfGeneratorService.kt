@@ -83,7 +83,7 @@ class PdfGeneratorService @Inject constructor(
     }
 
     private val titlePaint = Paint().apply {
-        color = Color.parseColor("#1565C0") // Blu primario
+        color = Color.parseColor("#00527E") // Blu primario
         textSize = 24f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         isAntiAlias = true
@@ -122,7 +122,7 @@ class PdfGeneratorService @Inject constructor(
     }
 
     private val checkboxPaint = Paint().apply {
-        color = Color.parseColor("#4CAF50")
+        color = Color.parseColor("#00527E")
         textSize = 12f
         isAntiAlias = true
     }

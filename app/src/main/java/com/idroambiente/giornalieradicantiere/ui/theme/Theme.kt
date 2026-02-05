@@ -11,17 +11,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 private val LightColorScheme = lightColorScheme(
-    primary = GreenPrimary,
+    primary = BluePrimary,
     onPrimary = OnPrimaryLight,
-    primaryContainer = GreenMuted,
+    primaryContainer = BlueMuted,
     onPrimaryContainer = OnSurfaceLight,
-    secondary = GreenAccent,
+    secondary = BlueAccent,
     onSecondary = OnPrimaryLight,
-    secondaryContainer = GreenLighter,
+    secondaryContainer = BlueLighter,
     onSecondaryContainer = OnSurfaceLight,
-    tertiary = GreenLight,
+    tertiary = BlueLight,
     onTertiary = OnPrimaryDark,
-    tertiaryContainer = GreenMuted,
+    tertiaryContainer = BlueMuted,
     onTertiaryContainer = OnSurfaceLight,
     background = BackgroundLight,
     onBackground = OnSurfaceLight,
@@ -36,21 +36,21 @@ private val LightColorScheme = lightColorScheme(
     onErrorContainer = OnErrorContainerLight,
     inverseSurface = SurfaceDark,
     inverseOnSurface = OnSurfaceDark,
-    outlineVariant = GreenMuted
+    outlineVariant = BlueMuted
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = GreenPrimaryDarkTheme,
+    primary = BluePrimaryDarkTheme,
     onPrimary = OnPrimaryDark,
-    primaryContainer = GreenMutedDark,
+    primaryContainer = BlueMutedDark,
     onPrimaryContainer = OnSurfaceDark,
-    secondary = GreenAccentDark,
+    secondary = BlueAccentDark,
     onSecondary = OnPrimaryDark,
-    secondaryContainer = GreenPrimaryDarkDarkTheme,
+    secondaryContainer = BluePrimaryDarkDarkTheme,
     onSecondaryContainer = OnSurfaceDark,
-    tertiary = GreenLight,
+    tertiary = BlueLight,
     onTertiary = OnPrimaryDark,
-    tertiaryContainer = GreenMutedDark,
+    tertiaryContainer = BlueMutedDark,
     onTertiaryContainer = OnSurfaceDark,
     background = BackgroundDark,
     onBackground = OnSurfaceDark,

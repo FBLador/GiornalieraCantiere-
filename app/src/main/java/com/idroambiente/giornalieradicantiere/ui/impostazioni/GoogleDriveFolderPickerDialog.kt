@@ -111,28 +111,6 @@ fun GoogleDriveFolderPickerDialog(
                         )
                     } else if (state.currentFolderId == "root") {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
-                            /*item {
-                                Text(
-                                    text = "Il mio Drive",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                            }*/
-                            if (state.folders.isEmpty()) {
-                                item {
-                                    Text(
-                                        text = "Nessuna cartella",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    )
-                                }
-                            } else {
-                                items(state.folders) { folder ->
-                                    FolderRow(folder = folder, onFolderClick = onNavigateToFolder)
-                                }
-                            }
                             item {
                                 Text(
                                     text = "Condivisi con me",
@@ -152,6 +130,28 @@ fun GoogleDriveFolderPickerDialog(
                                 }
                             } else {
                                 items(state.sharedFolders) { folder ->
+                                    FolderRow(folder = folder, onFolderClick = onNavigateToFolder)
+                                }
+                            }
+                            item {
+                                Text(
+                                    text = "Il mio Drive",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                            if (state.folders.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = "Nessuna cartella",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                    )
+                                }
+                            } else {
+                                items(state.folders) { folder ->
                                     FolderRow(folder = folder, onFolderClick = onNavigateToFolder)
                                 }
                             }

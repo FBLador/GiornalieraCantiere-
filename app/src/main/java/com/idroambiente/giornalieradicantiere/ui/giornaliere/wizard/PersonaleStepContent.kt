@@ -42,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -560,7 +559,7 @@ private fun PersonaleDataEntryPhase(
                     Text(
                         text = if (hasData) "✓ compilato" else "○ da compilare",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (hasData) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (hasData) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

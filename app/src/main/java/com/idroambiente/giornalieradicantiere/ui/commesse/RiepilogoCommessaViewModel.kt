@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -46,7 +47,13 @@ class RiepilogoCommessaViewModel @Inject constructor(
     private val _cantiereId = MutableStateFlow<Long?>(null)
     val cantiereId: StateFlow<Long?> = _cantiereId.asStateFlow()
 
-    val giornaliere: StateFlow<List<Giornaliera>> = _cantiereId
+    private val _startDate = MutableStateFlow<Long?>(null)
+    val startDate: StateFlow<Long?> = _startDate.asStateFlow()
+
+    private val _endDate = MutableStateFlow<Long?>(null)
+    val endDate: StateFlow<Long?> = _endDate.asStateFlow()
+
+    private val _allGiornaliere: StateFlow<List<Giornaliera>> = _cantiereId
         .filterNotNull()
         .flatMapLatest { cantiereId ->
             giornalieraRepository.getByCantiereId(cantiereId)
@@ -56,6 +63,19 @@ class RiepilogoCommessaViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    val giornaliere: StateFlow<List<Giornaliera>> = combine(
+        _allGiornaliere, _startDate, _endDate
+    ) { list, start, end ->
+        list.filter { g ->
+            (start == null || g.data >= start) &&
+            (end == null || g.data <= end + 86_399_999L)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     private val _riepilogo = MutableStateFlow(RiepilogoCommessaData())
     val riepilogo: StateFlow<RiepilogoCommessaData> = _riepilogo.asStateFlow()
@@ -70,6 +90,19 @@ class RiepilogoCommessaViewModel @Inject constructor(
                 updateRiepilogo(list)
             }
         }
+    }
+
+    fun setStartDate(date: Long?) {
+        _startDate.value = date
+    }
+
+    fun setEndDate(date: Long?) {
+        _endDate.value = date
+    }
+
+    fun clearDateFilter() {
+        _startDate.value = null
+        _endDate.value = null
     }
 
     private fun loadData() {
