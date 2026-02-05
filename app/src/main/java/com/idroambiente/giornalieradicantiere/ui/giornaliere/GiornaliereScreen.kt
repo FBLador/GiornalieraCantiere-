@@ -99,6 +99,13 @@ fun GiornaliereScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item { Spacer(modifier = Modifier.height(8.dp)) }
+                item {
+                    SecondaryButton(
+                        onClick = { onNavigateToRiepilogoCommessa(viewModel.commessaId) },
+                        modifier = Modifier.fillMaxWidth(),
+                        content = { Text("Riepilogo Commessa") }
+                    )
+                }
                 items(giornaliere, key = { it.id }) { giornaliera ->
                     GiornalieraItem(
                         giornaliera = giornaliera,
@@ -109,12 +116,6 @@ fun GiornaliereScreen(
                     )
                 }
                 item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SecondaryButton(
-                        onClick = { onNavigateToRiepilogoCommessa(viewModel.commessaId) },
-                        modifier = Modifier.fillMaxWidth(),
-                        content = { Text("Riepilogo Commessa") }
-                    )
                     Spacer(modifier = Modifier.height(80.dp))
                 }
             }

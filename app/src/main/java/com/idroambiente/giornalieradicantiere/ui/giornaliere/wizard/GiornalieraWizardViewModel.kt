@@ -96,7 +96,8 @@ data class WizardUiState(
     val showConfigErrorDialog: Boolean = false,
     val configErrorMessage: String? = null,
     val showOfflineDialog: Boolean = false,
-    val duplicateError: String? = null
+    val duplicateError: String? = null,
+    val selectedDate: Long? = null
 ) {
     val isOperationInProgress: Boolean
         get() = isSaving || pdfStatus is PdfStatus.Generating || pdfStatus is PdfStatus.Saving
@@ -284,7 +285,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                         mezzoSelections = mezzoSelections,
                         attrezzaturaSelections = attrezzaturaSelections,
                         riepilogo = calculateRiepilogo(personaleSelections, mezzoSelections, attrezzaturaSelections),
-                        note = giornaliera.note ?: ""
+                        note = giornaliera.note ?: "",
+                        selectedDate = giornaliera.data
                     )
                 }
             } catch (e: Exception) {
@@ -321,6 +323,10 @@ class GiornalieraWizardViewModel @Inject constructor(
                 riepilogo = calculateRiepilogo(state.personaleSelections, state.mezzoSelections, newSelections)
             )
         }
+    }
+
+    fun updateSelectedDate(date: Long?) {
+        _uiState.update { it.copy(selectedDate = date) }
     }
 
     fun updateNote(note: String) {
@@ -400,7 +406,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                     }
                 } else {
                     // Create new giornaliera
-                    val currentTime = System.currentTimeMillis()
+                    val currentTime = _uiState.value.selectedDate ?: System.currentTimeMillis()
                     
                     // Check for duplicate giornaliera for same cantiere on same day
                     if (giornalieraRepository.existsForCantiereAndDay(cantiereId, currentTime)) {
@@ -517,7 +523,7 @@ class GiornalieraWizardViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true) }
             try {
                 // 1. Salva la giornaliera nel DB come BOZZA
-                val currentTime = System.currentTimeMillis()
+                val currentTime = _uiState.value.selectedDate ?: System.currentTimeMillis()
                 
                 // Check for duplicate giornaliera for same cantiere on same day
                 if (giornalieraRepository.existsForCantiereAndDay(cantiereId, currentTime)) {

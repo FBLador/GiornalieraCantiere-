@@ -405,6 +405,8 @@ fun GiornalieraWizardScreen(
                             riepilogo = uiState.riepilogo,
                             note = uiState.note,
                             onNoteChanged = { viewModel.updateNote(it) },
+                            selectedDate = uiState.selectedDate,
+                            onDateChanged = { viewModel.updateSelectedDate(it) },
                             isReadOnly = isReadOnly
                         )
                     }
