@@ -26,10 +26,10 @@ interface MezzoDao {
     @Query("SELECT * FROM mezzo WHERE targa = :targa")
     suspend fun getByTarga(targa: String): Mezzo?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(mezzo: Mezzo): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(mezzi: List<Mezzo>)
 
     @Update

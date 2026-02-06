@@ -27,10 +27,10 @@ interface CommessaDao {
     @Query("SELECT * FROM commessa WHERE nome = :nome")
     suspend fun getByNome(nome: String): Commessa?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(commessa: Commessa): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(commesse: List<Commessa>)
 
     @Update

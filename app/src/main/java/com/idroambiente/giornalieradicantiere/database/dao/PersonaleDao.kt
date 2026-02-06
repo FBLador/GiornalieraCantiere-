@@ -23,10 +23,13 @@ interface PersonaleDao {
     @Query("SELECT * FROM personale WHERE nome LIKE '%' || :query || '%' OR cognome LIKE '%' || :query || '%' ORDER BY cognome ASC, nome ASC")
     fun search(query: String): Flow<List<Personale>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Query("SELECT * FROM personale WHERE LOWER(TRIM(nome)) = LOWER(TRIM(:nome)) AND LOWER(TRIM(cognome)) = LOWER(TRIM(:cognome))")
+    suspend fun getByNomeECognome(nome: String, cognome: String): Personale?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(personale: Personale): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(personale: List<Personale>)
 
     @Update

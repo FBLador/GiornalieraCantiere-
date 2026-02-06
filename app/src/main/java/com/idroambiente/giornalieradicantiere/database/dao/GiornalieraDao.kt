@@ -33,10 +33,10 @@ interface GiornalieraDao {
     @Query("SELECT * FROM giornaliera WHERE stato = :stato ORDER BY data DESC")
     fun getByStato(stato: StatoGiornaliera): Flow<List<Giornaliera>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(giornaliera: Giornaliera): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(giornaliere: List<Giornaliera>)
 
     @Update

@@ -24,4 +24,6 @@ class PersonaleRepository(private val personaleDao: PersonaleDao) {
     suspend fun deleteById(id: Long) = personaleDao.deleteById(id)
 
     suspend fun deleteAll() = personaleDao.deleteAll()
+
+    suspend fun getByNomeECognome(nome: String, cognome: String): Personale? = personaleDao.getByNomeECognome(nome, cognome)
 }

@@ -23,10 +23,13 @@ interface AttrezzaturaDao {
     @Query("SELECT * FROM attrezzatura WHERE nome LIKE '%' || :query || '%' ORDER BY nome ASC")
     fun search(query: String): Flow<List<Attrezzatura>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Query("SELECT * FROM attrezzatura WHERE LOWER(TRIM(nome)) = LOWER(TRIM(:nome))")
+    suspend fun getByNome(nome: String): Attrezzatura?
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(attrezzatura: Attrezzatura): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(attrezzature: List<Attrezzatura>)
 
     @Update

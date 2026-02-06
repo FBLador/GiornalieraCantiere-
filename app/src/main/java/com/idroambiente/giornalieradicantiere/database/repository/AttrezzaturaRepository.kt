@@ -24,4 +24,6 @@ class AttrezzaturaRepository(private val attrezzaturaDao: AttrezzaturaDao) {
     suspend fun deleteById(id: Long) = attrezzaturaDao.deleteById(id)
 
     suspend fun deleteAll() = attrezzaturaDao.deleteAll()
+
+    suspend fun getByNome(nome: String): Attrezzatura? = attrezzaturaDao.getByNome(nome)
 }

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +47,7 @@ fun AttrezzaturaListScreen(
     val attrezzaturaList by viewModel.attrezzaturaList.collectAsState()
     val showCreateDialog by viewModel.showCreateDialog.collectAsState()
     val attrezzaturaToEdit by viewModel.attrezzaturaToEdit.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Scaffold(
         topBar = {
@@ -115,6 +117,27 @@ fun AttrezzaturaListScreen(
                 attrezzatura = attrezzatura,
                 onConfirm = { nome -> viewModel.updateAttrezzatura(nome) },
                 onDismiss = { viewModel.hideEditDialog() }
+            )
+        }
+
+        // Error Dialog
+        errorMessage?.let { error ->
+            AlertDialog(
+                onDismissRequest = { viewModel.clearError() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                title = { Text("Errore") },
+                text = { Text(error) },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.clearError() }) {
+                        Text("OK")
+                    }
+                }
             )
         }
     }

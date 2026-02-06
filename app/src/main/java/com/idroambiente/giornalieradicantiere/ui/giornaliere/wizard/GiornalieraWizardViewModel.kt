@@ -445,9 +445,9 @@ class GiornalieraWizardViewModel @Inject constructor(
                     giornalieraId = giornalieraId,
                     personaleId = personaleId,
                     presente = data.presente,
-                    oreViaggioAndata = data.oreViaggioAndata,
-                    oreViaggioRitorno = data.oreViaggioRitorno,
-                    oreLavoro = data.oreLavoro,
+                    oreViaggioAndata = maxOf(0f, data.oreViaggioAndata),
+                    oreViaggioRitorno = maxOf(0f, data.oreViaggioRitorno),
+                    oreLavoro = maxOf(0f, data.oreLavoro),
                     inizioTurno = data.inizioTurno,
                     fineTurno = data.fineTurno,
                     pernotto = data.pernotto
@@ -462,8 +462,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                 MezzoGiornaliera(
                     giornalieraId = giornalieraId,
                     mezzoId = mezzoId,
-                    kmAndata = data.kmAndata,
-                    kmRitorno = data.kmRitorno
+                    kmAndata = maxOf(0f, data.kmAndata),
+                    kmRitorno = maxOf(0f, data.kmRitorno)
                 )
             }
         mezzoGiornalieraRepository.insertAll(mezzoGiornaliere)
@@ -658,7 +658,6 @@ class GiornalieraWizardViewModel @Inject constructor(
                     }
                 }
                 ExportBehavior.SHARE -> {
-                    markAsInviata(giornaliera)
                     val shareIntent = fileStorageService.createShareChooserIntent(pdfFile)
                     _uiState.update {
                         it.copy(
@@ -695,7 +694,6 @@ class GiornalieraWizardViewModel @Inject constructor(
                             }
                         }
                         is SaveResult.Error -> {
-                            markAsInviata(giornaliera)
                             // Salvataggio fallito ma condividi comunque
                             _uiState.update {
                                 it.copy(
@@ -870,6 +868,17 @@ class GiornalieraWizardViewModel @Inject constructor(
      * Conferma il completamento dopo aver gestito il PDF
      */
     fun confirmCompletion() {
-        _uiState.update { it.copy(saveCompleted = true) }
+        viewModelScope.launch {
+            val currentStatus = _uiState.value.pdfStatus
+            val giornaliera = _uiState.value.giornaliera
+            
+            // Marca come INVIATA se è stato condiviso (ReadyToShare o SavedAndReadyToShare)
+            if (giornaliera != null && 
+                (currentStatus is PdfStatus.ReadyToShare || currentStatus is PdfStatus.SavedAndReadyToShare)) {
+                markAsInviata(giornaliera)
+            }
+            
+            _uiState.update { it.copy(saveCompleted = true) }
+        }
     }
 }

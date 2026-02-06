@@ -692,7 +692,8 @@ private fun DecimalTextField(
 
             val parsed = filtered.replace(",", ".").toFloatOrNull()
             if (parsed != null) {
-                onValueChange(parsed)
+                // Blocca valori negativi, imposta a 0 invece
+                onValueChange(maxOf(0f, parsed))
             } else if (filtered.isEmpty()) {
                 onValueChange(0f)
             }

@@ -31,6 +31,9 @@ class AttrezzaturaViewModel @Inject constructor(
     private val _attrezzaturaToEdit = MutableStateFlow<Attrezzatura?>(null)
     val attrezzaturaToEdit: StateFlow<Attrezzatura?> = _attrezzaturaToEdit.asStateFlow()
 
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
     fun showCreateDialog() {
         _showCreateDialog.value = true
     }
@@ -49,7 +52,17 @@ class AttrezzaturaViewModel @Inject constructor(
 
     fun createAttrezzatura(nome: String) {
         viewModelScope.launch {
-            val attrezzatura = Attrezzatura(nome = nome.trim())
+            _errorMessage.value = null
+            val trimmedNome = nome.trim()
+            
+            // Check for duplicate nome (case-insensitive)
+            val existingAttrezzatura = attrezzaturaRepository.getByNome(trimmedNome)
+            if (existingAttrezzatura != null) {
+                _errorMessage.value = "Esiste già un'attrezzatura con questo nome"
+                return@launch
+            }
+
+            val attrezzatura = Attrezzatura(nome = trimmedNome)
             attrezzaturaRepository.insert(attrezzatura)
             _showCreateDialog.value = false
         }
@@ -57,8 +70,18 @@ class AttrezzaturaViewModel @Inject constructor(
 
     fun updateAttrezzatura(nome: String) {
         viewModelScope.launch {
+            _errorMessage.value = null
             val current = _attrezzaturaToEdit.value ?: return@launch
-            attrezzaturaRepository.update(current.copy(nome = nome.trim()))
+            val trimmedNome = nome.trim()
+            
+            // Check for duplicate nome (case-insensitive, excluding current)
+            val existingAttrezzatura = attrezzaturaRepository.getByNome(trimmedNome)
+            if (existingAttrezzatura != null && existingAttrezzatura.id != current.id) {
+                _errorMessage.value = "Esiste già un'attrezzatura con questo nome"
+                return@launch
+            }
+
+            attrezzaturaRepository.update(current.copy(nome = trimmedNome))
             _attrezzaturaToEdit.value = null
         }
     }
@@ -67,5 +90,9 @@ class AttrezzaturaViewModel @Inject constructor(
         viewModelScope.launch {
             attrezzaturaRepository.delete(attrezzatura)
         }
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
     }
 }

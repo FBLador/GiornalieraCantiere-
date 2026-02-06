@@ -23,10 +23,10 @@ interface CantiereDao {
     @Query("SELECT * FROM cantiere WHERE nome LIKE '%' || :query || '%' ORDER BY id DESC")
     fun search(query: String): Flow<List<Cantiere>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(cantiere: Cantiere): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertAll(cantieri: List<Cantiere>)
 
     @Update

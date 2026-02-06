@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +47,7 @@ fun PersonaleListScreen(
     val personaleList by viewModel.personaleList.collectAsState()
     val showCreateDialog by viewModel.showCreateDialog.collectAsState()
     val personaleToEdit by viewModel.personaleToEdit.collectAsState()
+    val duplicateDialogState by viewModel.duplicateDialogState.collectAsState()
 
     Scaffold(
         topBar = {
@@ -115,6 +117,45 @@ fun PersonaleListScreen(
                 personale = personale,
                 onConfirm = { nome, cognome -> viewModel.updatePersonale(nome, cognome) },
                 onDismiss = { viewModel.hideEditDialog() }
+            )
+        }
+
+        // Duplicate Dialog
+        duplicateDialogState?.let { state ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissDuplicateDialog() },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                title = { Text("Persona già esistente") },
+                text = {
+                    Column {
+                        Text(
+                            text = "Esiste già una persona con nome \"${state.nome}\" e cognome \"${state.cognome}\".",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Modifica il nome per evitare confusione.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                },
+                confirmButton = {
+                    PrimaryButton(
+                        onClick = { viewModel.confirmDuplicateAndModify() },
+                        content = { Text("Modifica nome") }
+                    )
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissDuplicateDialog() }) {
+                        Text("Annulla")
+                    }
+                }
             )
         }
     }
