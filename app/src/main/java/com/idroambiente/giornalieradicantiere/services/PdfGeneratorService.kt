@@ -340,7 +340,7 @@ class PdfGeneratorService @Inject constructor(
             val pernotto = if (item.giornalieraData.pernotto) "Si" else "No"
 
             x = MARGIN + 5f
-            state.canvas!!.drawText(nome.take(25), x, y + 11f, textPaint)
+            val nomeHeight = drawWrappedText(state.canvas!!, nome, x, y, colWidths[0] - 10f, textPaint)
             x += colWidths[0]
             state.canvas!!.drawText(oreLavoro, x, y + 11f, textPaint)
             x += colWidths[1]
@@ -350,7 +350,7 @@ class PdfGeneratorService @Inject constructor(
             x += colWidths[3]
             state.canvas!!.drawText(pernotto, x, y + 11f, textPaint)
 
-            y += LINE_HEIGHT
+            y += maxOf(LINE_HEIGHT, nomeHeight)
         }
 
         return y
@@ -394,7 +394,7 @@ class PdfGeneratorService @Inject constructor(
             val totaleKm = item.giornalieraData.kmAndata + item.giornalieraData.kmRitorno
 
             x = MARGIN + 5f
-            state.canvas!!.drawText(item.mezzo.nome.take(25), x, y + 11f, textPaint)
+            val nomeHeight = drawWrappedText(state.canvas!!, item.mezzo.nome, x, y, colWidths[0] - 10f, textPaint)
             x += colWidths[0]
             state.canvas!!.drawText(item.mezzo.targa, x, y + 11f, textPaint)
             x += colWidths[1]
@@ -404,7 +404,7 @@ class PdfGeneratorService @Inject constructor(
             x += colWidths[3]
             state.canvas!!.drawText(formatKm(totaleKm), x, y + 11f, textPaint)
 
-            y += LINE_HEIGHT
+            y += maxOf(LINE_HEIGHT, nomeHeight)
         }
 
         return y
@@ -422,8 +422,8 @@ class PdfGeneratorService @Inject constructor(
         }
 
         attrezzatureList.forEach { attrezzatura ->
-            canvas.drawText("• ${attrezzatura.nome}", MARGIN + 10f, y + 11f, textPaint)
-            y += LINE_HEIGHT
+            val h = drawWrappedText(canvas, "• ${attrezzatura.nome}", MARGIN + 10f, y, PAGE_WIDTH - MARGIN - (MARGIN + 10f), textPaint)
+            y += maxOf(LINE_HEIGHT, h)
         }
 
         return y
@@ -502,13 +502,9 @@ class PdfGeneratorService @Inject constructor(
         canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, tablePaint)
         y += 15f
 
-        // Checkbox DPI
-        val dpiCheck = if (giornaliera.dpiIdonei) "☑" else "☐"
-        canvas.drawText("$dpiCheck DPI idonei", MARGIN, y + 12f, checkboxPaint)
-
         // Checkbox POS
         val posCheck = if (giornaliera.presaVisionePOS) "☑" else "☐"
-        canvas.drawText("$posCheck Presa visione POS", MARGIN + 150f, y + 12f, checkboxPaint)
+        canvas.drawText("$posCheck Presa visione POS", MARGIN, y + 12f, checkboxPaint)
         y += 25f
 
         // Timestamp generazione
@@ -539,6 +535,45 @@ class PdfGeneratorService @Inject constructor(
         val h = ((millis / 1000 / 60 / 60) % 24).toInt()
         val m = ((millis / 1000 / 60) % 60).toInt()
         return String.format("%02d:%02d", h, m)
+    }
+
+    /**
+     * Disegna testo con word-wrap dentro una larghezza massima.
+     * @return l'altezza totale occupata dal testo (LINE_HEIGHT * numero di righe)
+     */
+    private fun drawWrappedText(
+        canvas: Canvas,
+        text: String,
+        x: Float,
+        startY: Float,
+        maxWidth: Float,
+        paint: Paint
+    ): Float {
+        if (paint.measureText(text) <= maxWidth) {
+            canvas.drawText(text, x, startY + 11f, paint)
+            return LINE_HEIGHT
+        }
+
+        var y = startY
+        val words = text.split(" ")
+        var currentLine = ""
+
+        words.forEach { word ->
+            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+            if (paint.measureText(testLine) > maxWidth && currentLine.isNotEmpty()) {
+                canvas.drawText(currentLine, x, y + 11f, paint)
+                y += LINE_HEIGHT
+                currentLine = word
+            } else {
+                currentLine = testLine
+            }
+        }
+        if (currentLine.isNotEmpty()) {
+            canvas.drawText(currentLine, x, y + 11f, paint)
+            y += LINE_HEIGHT
+        }
+
+        return y - startY
     }
 
     /**

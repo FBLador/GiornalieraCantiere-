@@ -328,7 +328,7 @@ fun CreateCommessaDialog(
                 }
                 OutlinedTextField(
                     value = cliente,
-                    onValueChange = { cliente = it },
+                    onValueChange = { cliente = it.take(100) },
                     label = { Text("Cliente") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(

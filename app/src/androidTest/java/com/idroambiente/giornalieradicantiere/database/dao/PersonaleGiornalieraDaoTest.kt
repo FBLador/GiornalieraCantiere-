@@ -30,7 +30,7 @@ class PersonaleGiornalieraDaoTest {
     @Before
     fun setup() {
         database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext(),
+        ApplicationProvider.getApplicationContext(),
             AppDatabase::class.java
         ).allowMainThreadQueries().build()
         personaleGiornalieraDao = database.personaleGiornalieraDao()
@@ -46,11 +46,11 @@ class PersonaleGiornalieraDaoTest {
                 Giornaliera(cantiereId = cantiereId, data = System.currentTimeMillis())
             )
             personaleId = database.personaleDao().insert(
-                Personale(nome = "Mario", cognome = "Rossi")
+        }
+
+        Personale(nome = "Mario", cognome = "Rossi")
             )
         }
-    }
-
     @After
     fun teardown() {
         database.close()

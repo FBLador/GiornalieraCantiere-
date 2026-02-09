@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.idroambiente.giornalieradicantiere.database.entities.Personale
 
@@ -333,7 +334,9 @@ private fun PersonaleSelectionPhase(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "${personale.nome} ${personale.cognome}",
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -382,6 +385,13 @@ private fun PersonaleDataEntryPhase(
     var fineTurno by remember { mutableStateOf(0L) }
     var orePausa by remember { mutableStateOf(0f) }
     var pernotto by remember { mutableStateOf(false) }
+
+    val isTurnoInvalido = inizioTurno > 0 && fineTurno > 0 && fineTurno <= inizioTurno
+
+    val isPausaEccessiva = inizioTurno > 0 && fineTurno > inizioTurno && orePausa > 0f && run {
+        val durataTurnoOre = (fineTurno - inizioTurno) / 1000f / 60f / 60f
+        orePausa * 2 >= durataTurnoOre
+    }
 
     // Get list of present people
     val presenti = personaleList.filter { personaleSelections[it.id]?.presente == true }
@@ -436,13 +446,15 @@ private fun PersonaleDataEntryPhase(
                     value = oreViaggioAndata,
                     onValueChange = { oreViaggioAndata = it },
                     label = "Andata",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxValue = 24f
                 )
                 DecimalTextField(
                     value = oreViaggioRitorno,
                     onValueChange = { oreViaggioRitorno = it },
                     label = "Ritorno",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxValue = 24f
                 )
             }
 
@@ -474,6 +486,15 @@ private fun PersonaleDataEntryPhase(
                 )
             }
 
+            if (isTurnoInvalido) {
+                Text(
+                    text = "L'orario di fine deve essere successivo all'inizio",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
             Spacer(Modifier.height(8.dp))
 
             // Ore Pausa
@@ -481,8 +502,18 @@ private fun PersonaleDataEntryPhase(
                 value = orePausa,
                 onValueChange = { orePausa = it },
                 label = "Ore Pausa",
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                maxValue = 24f
             )
+
+            if (isPausaEccessiva) {
+                Text(
+                    text = "Le ore di pausa devono essere inferiori alle ore di lavoro",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
             Spacer(Modifier.height(8.dp))
 
@@ -553,9 +584,11 @@ private fun PersonaleDataEntryPhase(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "${personale.nome} ${personale.cognome}",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(Modifier.weight(1f))
                     Text(
                         text = if (hasData) "✓ compilato" else "○ da compilare",
                         style = MaterialTheme.typography.bodySmall,
@@ -587,7 +620,7 @@ private fun PersonaleDataEntryPhase(
                 // Deselect those just compiled
                 selectedIds = emptySet()
             },
-            enabled = selectedIds.isNotEmpty(),
+            enabled = selectedIds.isNotEmpty() && !isTurnoInvalido && !isPausaEccessiva,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
@@ -669,7 +702,8 @@ private fun DecimalTextField(
     value: Float,
     onValueChange: (Float) -> Unit,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    maxValue: Float = Float.MAX_VALUE
 ) {
     var textValue by remember { mutableStateOf("") }
 
@@ -679,6 +713,8 @@ private fun DecimalTextField(
             textValue = value.toString().removeSuffix(".0")
         }
     }
+
+    val isOverMax = value > maxValue
 
     OutlinedTextField(
         value = textValue,
@@ -692,8 +728,7 @@ private fun DecimalTextField(
 
             val parsed = filtered.replace(",", ".").toFloatOrNull()
             if (parsed != null) {
-                // Blocca valori negativi, imposta a 0 invece
-                onValueChange(maxOf(0f, parsed))
+                onValueChange(maxOf(0f, parsed).coerceAtMost(maxValue))
             } else if (filtered.isEmpty()) {
                 onValueChange(0f)
             }
@@ -701,7 +736,9 @@ private fun DecimalTextField(
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = modifier,
-        singleLine = true
+        singleLine = true,
+        isError = isOverMax,
+        supportingText = if (isOverMax) {{ Text("Max ${maxValue.toInt()}") }} else null
     )
 }
 

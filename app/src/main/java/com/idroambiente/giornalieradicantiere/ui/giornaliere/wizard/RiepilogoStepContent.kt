@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +44,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.idroambiente.giornalieradicantiere.database.entities.Attrezzatura
 import com.idroambiente.giornalieradicantiere.database.entities.Mezzo
@@ -76,6 +78,8 @@ fun RiepilogoStepContent(
     onNoteChanged: (String) -> Unit,
     selectedDate: Long?,
     onDateChanged: (Long?) -> Unit,
+    presaVisionePOS: Boolean,
+    onPresaVisionePOSChanged: (Boolean) -> Unit,
     isReadOnly: Boolean = false,
     snackbarHostState: SnackbarHostState? = null,
     modifier: Modifier = Modifier
@@ -202,13 +206,14 @@ fun RiepilogoStepContent(
                 } else {
                     OutlinedTextField(
                         value = note,
-                        onValueChange = onNoteChanged,
+                        onValueChange = { onNoteChanged(it.take(500)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 100.dp),
                         placeholder = {
                             Text("Inserisci eventuali note...")
                         },
+                        supportingText = { Text("${note.length}/500") },
                         maxLines = 5
                     )
                 }
@@ -246,7 +251,9 @@ fun RiepilogoStepContent(
                             Column(modifier = Modifier.padding(vertical = 4.dp)) {
                                 Text(
                                     text = "${persona.nome} ${persona.cognome}",
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -330,15 +337,19 @@ fun RiepilogoStepContent(
                                     .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = mezzo.nome,
-                                        style = MaterialTheme.typography.bodyLarge
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
                                         text = mezzo.targa,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                                 Text(
@@ -393,6 +404,8 @@ fun RiepilogoStepContent(
                             Text(
                                 text = attrezzatura.nome,
                                 style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(vertical = 2.dp)
                             )
                         }
@@ -401,6 +414,30 @@ fun RiepilogoStepContent(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 SummaryItem("Totale", "${riepilogo.totaleAttrezzatureUtilizzate}")
+            }
+        }
+
+        // Sezione Presa Visione POS
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !isReadOnly) { onPresaVisionePOSChanged(!presaVisionePOS) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = presaVisionePOS,
+                    onCheckedChange = if (isReadOnly) null else onPresaVisionePOSChanged
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Presa visione POS",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
 

@@ -702,7 +702,7 @@ private fun CreateFolderDialog(
         text = {
             OutlinedTextField(
                 value = folderName,
-                onValueChange = { folderName = it },
+                onValueChange = { folderName = it.take(100) },
                 label = { Text("Nome cartella") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()

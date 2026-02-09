@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.idroambiente.giornalieradicantiere.database.entities.Mezzo
 
@@ -300,15 +301,19 @@ private fun MezzoSelectionPhase(
                         }
                     )
                     Spacer(Modifier.width(8.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = mezzo.nome,
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = mezzo.targa,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -433,13 +438,15 @@ private fun MezzoDataEntryPhase(
                     value = kmAndata,
                     onValueChange = { kmAndata = it },
                     label = "KM Andata",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxValue = 9999f
                 )
                 DecimalTextField(
                     value = kmRitorno,
                     onValueChange = { kmRitorno = it },
                     label = "KM Ritorno",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    maxValue = 9999f
                 )
             }
 
@@ -495,7 +502,9 @@ private fun MezzoDataEntryPhase(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "${mezzo.nome} - ${mezzo.targa}",
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         if (hasData) {
                             Text(
@@ -548,7 +557,8 @@ private fun DecimalTextField(
     value: Float,
     onValueChange: (Float) -> Unit,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    maxValue: Float = Float.MAX_VALUE
 ) {
     var textValue by remember { mutableStateOf("") }
 
@@ -557,6 +567,8 @@ private fun DecimalTextField(
             textValue = value.toString().removeSuffix(".0")
         }
     }
+
+    val isOverMax = value > maxValue
 
     OutlinedTextField(
         value = textValue,
@@ -569,7 +581,7 @@ private fun DecimalTextField(
 
             val parsed = filtered.replace(",", ".").toFloatOrNull()
             if (parsed != null) {
-                onValueChange(maxOf(0f, parsed))
+                onValueChange(maxOf(0f, parsed).coerceAtMost(maxValue))
             } else if (filtered.isEmpty()) {
                 onValueChange(0f)
             }
@@ -577,6 +589,8 @@ private fun DecimalTextField(
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = modifier,
-        singleLine = true
+        singleLine = true,
+        isError = isOverMax,
+        supportingText = if (isOverMax) {{ Text("Max ${maxValue.toInt()}") }} else null
     )
 }

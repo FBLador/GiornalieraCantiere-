@@ -103,7 +103,8 @@ data class WizardUiState(
     val showOfflineDialog: Boolean = false,
     val duplicateError: String? = null,
     val selectedDate: Long? = null,
-    val previousMezzoDataResult: PreviousMezzoDataResult? = null
+    val previousMezzoDataResult: PreviousMezzoDataResult? = null,
+    val presaVisionePOS: Boolean = false
 ) {
     val isOperationInProgress: Boolean
         get() = isSaving || pdfStatus is PdfStatus.Generating || pdfStatus is PdfStatus.Saving
@@ -292,7 +293,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                         attrezzaturaSelections = attrezzaturaSelections,
                         riepilogo = calculateRiepilogo(personaleSelections, mezzoSelections, attrezzaturaSelections),
                         note = giornaliera.note ?: "",
-                        selectedDate = giornaliera.data
+                        selectedDate = giornaliera.data,
+                        presaVisionePOS = giornaliera.presaVisionePOS
                     )
                 }
             } catch (e: Exception) {
@@ -339,6 +341,10 @@ class GiornalieraWizardViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(note = note)
         }
+    }
+
+    fun updatePresaVisionePOS(value: Boolean) {
+        _uiState.update { it.copy(presaVisionePOS = value) }
     }
 
     fun loadPreviousMezzoData() {
@@ -480,6 +486,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                         giornalieraRepository.update(
                             existingGiornaliera.copy(
                                 note = _uiState.value.note.ifBlank { null },
+                                presaVisionePOS = _uiState.value.presaVisionePOS,
                                 updatedAt = System.currentTimeMillis()
                             )
                         )
@@ -494,10 +501,10 @@ class GiornalieraWizardViewModel @Inject constructor(
                 } else {
                     // Create new giornaliera
                     val currentTime = _uiState.value.selectedDate ?: System.currentTimeMillis()
-                    
+
                     // Check for duplicate giornaliera for same cantiere on same day
                     if (giornalieraRepository.existsForCantiereAndDay(cantiereId, currentTime)) {
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
                                 isSaving = false,
                                 duplicateError = "Esiste già una giornaliera per questo cantiere in questa data"
@@ -505,12 +512,13 @@ class GiornalieraWizardViewModel @Inject constructor(
                         }
                         return@launch
                     }
-                    
+
                     val giornaliera = Giornaliera(
                         cantiereId = cantiereId,
                         data = currentTime,
                         stato = StatoGiornaliera.BOZZA,
-                        note = _uiState.value.note.ifBlank { null }
+                        note = _uiState.value.note.ifBlank { null },
+                        presaVisionePOS = _uiState.value.presaVisionePOS
                     )
                     val newGiornalieraId = giornalieraRepository.insert(giornaliera)
                     saveRelations(newGiornalieraId)
@@ -579,6 +587,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                     giornalieraRepository.update(
                         existingGiornaliera.copy(
                             note = _uiState.value.note.ifBlank { null },
+                            presaVisionePOS = _uiState.value.presaVisionePOS,
                             updatedAt = System.currentTimeMillis()
                         )
                     )
@@ -628,7 +637,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                     cantiereId = cantiereId,
                     data = currentTime,
                     stato = StatoGiornaliera.BOZZA,
-                    note = _uiState.value.note.ifBlank { null }
+                    note = _uiState.value.note.ifBlank { null },
+                    presaVisionePOS = _uiState.value.presaVisionePOS
                 )
                 val newId = giornalieraRepository.insert(giornaliera)
 

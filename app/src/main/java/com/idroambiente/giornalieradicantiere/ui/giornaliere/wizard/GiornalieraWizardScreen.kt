@@ -431,6 +431,8 @@ fun GiornalieraWizardScreen(
                             onNoteChanged = { viewModel.updateNote(it) },
                             selectedDate = uiState.selectedDate,
                             onDateChanged = { viewModel.updateSelectedDate(it) },
+                            presaVisionePOS = uiState.presaVisionePOS,
+                            onPresaVisionePOSChanged = { viewModel.updatePresaVisionePOS(it) },
                             isReadOnly = isReadOnly,
                             snackbarHostState = snackbarHostState
                         )

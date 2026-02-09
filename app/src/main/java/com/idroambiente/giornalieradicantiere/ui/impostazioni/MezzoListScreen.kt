@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.Mezzo
@@ -157,15 +158,19 @@ fun MezzoItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = mezzo.nome,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = mezzo.targa,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
@@ -203,14 +208,14 @@ fun CreateMezzoDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = nome,
-                    onValueChange = { nome = it },
+                    onValueChange = { nome = it.take(50) },
                     label = { Text("Nome") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = targa,
-                    onValueChange = { targa = it.uppercase() },
+                    onValueChange = { targa = it.uppercase().take(10) },
                     label = { Text("Targa") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -248,14 +253,14 @@ fun EditMezzoDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = nome,
-                    onValueChange = { nome = it },
+                    onValueChange = { nome = it.take(50) },
                     label = { Text("Nome") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = targa,
-                    onValueChange = { targa = it.uppercase() },
+                    onValueChange = { targa = it.uppercase().take(10) },
                     label = { Text("Targa") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()

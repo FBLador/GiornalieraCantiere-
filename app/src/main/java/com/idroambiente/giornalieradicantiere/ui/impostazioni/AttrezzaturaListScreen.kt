@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.Attrezzatura
@@ -159,7 +160,10 @@ fun AttrezzaturaItem(
         ) {
             Text(
                 text = attrezzatura.nome,
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                 IconButton(onClick = onEdit) {
@@ -194,7 +198,7 @@ fun CreateAttrezzaturaDialog(
         text = {
             OutlinedTextField(
                 value = nome,
-                onValueChange = { nome = it },
+                onValueChange = { nome = it.take(50) },
                 label = { Text("Nome") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -229,7 +233,7 @@ fun EditAttrezzaturaDialog(
         text = {
             OutlinedTextField(
                 value = nome,
-                onValueChange = { nome = it },
+                onValueChange = { nome = it.take(50) },
                 label = { Text("Nome") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
