@@ -26,6 +26,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,7 +37,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -73,10 +77,12 @@ fun RiepilogoStepContent(
     selectedDate: Long?,
     onDateChanged: (Long?) -> Unit,
     isReadOnly: Boolean = false,
+    snackbarHostState: SnackbarHostState? = null,
     modifier: Modifier = Modifier
 ) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
     var showDatePicker by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val today = System.currentTimeMillis()
     val calendar = Calendar.getInstance()
     calendar.timeInMillis = today
@@ -426,6 +432,16 @@ fun RiepilogoStepContent(
                         // Check if date is not in the future
                         if (normalizedDate <= todayStartOfDay) {
                             onDateChanged(normalizedDate)
+                        } else {
+                            // Show feedback for future date selection
+                            snackbarHostState?.let { hostState ->
+                                scope.launch {
+                                    hostState.showSnackbar(
+                                        message = "Non è possibile selezionare una data futura. La data di oggi è stata mantenuta.",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                }
+                            }
                         }
                     }
                     showDatePicker = false

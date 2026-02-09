@@ -61,22 +61,19 @@ class PersonaleGiornalieraDaoTest {
         val pg = PersonaleGiornaliera(
             giornalieraId = giornalieraId,
             personaleId = personaleId,
-            oreViaggio = 1.5f,
+            oreViaggioAndata = 1.5f,
             oreLavoro = 8.0f,
             inizioTurno = 28800000L, // 8:00
             fineTurno = 61200000L,   // 17:00
-            pernotto = false,
-            dpiIdonei = true,
-            presaVisionePOS = true
+            pernotto = false
         )
 
         val id = personaleGiornalieraDao.insert(pg)
         val result = personaleGiornalieraDao.getById(id)
 
         assertNotNull(result)
-        assertEquals(1.5f, result?.oreViaggio)
+        assertEquals(1.5f, result?.oreViaggioAndata)
         assertEquals(8.0f, result?.oreLavoro)
-        assertEquals(true, result?.dpiIdonei)
     }
 
     @Test
@@ -151,7 +148,7 @@ class PersonaleGiornalieraDaoTest {
         val pg = PersonaleGiornaliera(
             giornalieraId = giornalieraId,
             personaleId = personaleId,
-            oreViaggio = 1.0f,
+            oreViaggioAndata = 1.0f,
             oreLavoro = 8.0f,
             inizioTurno = 0L,
             fineTurno = 0L

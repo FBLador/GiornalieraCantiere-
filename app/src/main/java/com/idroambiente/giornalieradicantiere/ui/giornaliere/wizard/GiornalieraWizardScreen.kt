@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -344,7 +345,18 @@ fun GiornalieraWizardScreen(
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { 
+            SnackbarHost(
+                hostState = snackbarHostState,
+                snackbar = { snackbarData ->
+                    Snackbar(
+                        snackbarData = snackbarData,
+                        containerColor = MaterialTheme.colorScheme.inverseSurface,
+                        contentColor = MaterialTheme.colorScheme.inverseOnSurface
+                    )
+                }
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -407,7 +419,8 @@ fun GiornalieraWizardScreen(
                             onNoteChanged = { viewModel.updateNote(it) },
                             selectedDate = uiState.selectedDate,
                             onDateChanged = { viewModel.updateSelectedDate(it) },
-                            isReadOnly = isReadOnly
+                            isReadOnly = isReadOnly,
+                            snackbarHostState = snackbarHostState
                         )
                     }
                 }
