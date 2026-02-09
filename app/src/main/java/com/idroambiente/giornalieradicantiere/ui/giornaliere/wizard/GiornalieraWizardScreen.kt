@@ -135,6 +135,17 @@ fun GiornalieraWizardScreen(
         }
     }
 
+    // Handle previous mezzo data result feedback
+    LaunchedEffect(uiState.previousMezzoDataResult) {
+        uiState.previousMezzoDataResult?.let { result ->
+            snackbarHostState.showSnackbar(
+                message = result.message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearPreviousMezzoDataResult()
+        }
+    }
+
     // Handle duplicate error
     LaunchedEffect(uiState.duplicateError) {
         uiState.duplicateError?.let { error ->
@@ -397,6 +408,7 @@ fun GiornalieraWizardScreen(
                             onMezzoDataChanged = { mezzoId, data ->
                                 viewModel.updateMezzoData(mezzoId, data)
                             },
+                            onLoadPreviousData = { viewModel.loadPreviousMezzoData() },
                             isReadOnly = isReadOnly
                         )
                         2 -> AttrezzaturaStepContent(

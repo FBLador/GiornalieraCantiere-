@@ -48,6 +48,9 @@ interface GiornalieraDao {
     @Query("DELETE FROM giornaliera WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("SELECT * FROM giornaliera WHERE cantiereId = :cantiereId ORDER BY data DESC LIMIT 1")
+    suspend fun getLatestByCantiereId(cantiereId: Long): Giornaliera?
+
     @Query("DELETE FROM giornaliera")
     suspend fun deleteAll()
 }

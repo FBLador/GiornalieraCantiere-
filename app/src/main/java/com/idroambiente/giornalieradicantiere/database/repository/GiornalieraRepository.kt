@@ -29,6 +29,9 @@ class GiornalieraRepository(private val giornalieraDao: GiornalieraDao) {
 
     suspend fun deleteById(id: Long) = giornalieraDao.deleteById(id)
 
+    suspend fun getLatestByCantiereId(cantiereId: Long): Giornaliera? =
+        giornalieraDao.getLatestByCantiereId(cantiereId)
+
     suspend fun deleteAll() = giornalieraDao.deleteAll()
 
     suspend fun existsForCantiereAndDay(cantiereId: Long, date: Long): Boolean {

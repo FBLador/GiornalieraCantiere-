@@ -80,6 +80,11 @@ sealed class PdfStatus {
     data class Error(val message: String?) : PdfStatus()
 }
 
+data class PreviousMezzoDataResult(
+    val message: String,
+    val updatedCount: Int
+)
+
 data class WizardUiState(
     val currentStep: Int = 0,
     val personaleSelections: Map<Long, PersonaleFormData> = emptyMap(),
@@ -97,7 +102,8 @@ data class WizardUiState(
     val configErrorMessage: String? = null,
     val showOfflineDialog: Boolean = false,
     val duplicateError: String? = null,
-    val selectedDate: Long? = null
+    val selectedDate: Long? = null,
+    val previousMezzoDataResult: PreviousMezzoDataResult? = null
 ) {
     val isOperationInProgress: Boolean
         get() = isSaving || pdfStatus is PdfStatus.Generating || pdfStatus is PdfStatus.Saving
@@ -333,6 +339,87 @@ class GiornalieraWizardViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(note = note)
         }
+    }
+
+    fun loadPreviousMezzoData() {
+        viewModelScope.launch {
+            try {
+                val latestGiornaliera = giornalieraRepository.getLatestByCantiereId(cantiereId)
+
+                // If editing, skip the current giornaliera
+                val previousGiornaliera = if (latestGiornaliera != null && latestGiornaliera.id == giornalieraId) {
+                    // Need to find the one before this - query all and pick second
+                    null
+                } else {
+                    latestGiornaliera
+                }
+
+                if (previousGiornaliera == null) {
+                    _uiState.update {
+                        it.copy(previousMezzoDataResult = PreviousMezzoDataResult(
+                            message = "Nessuna giornaliera precedente trovata per questo cantiere",
+                            updatedCount = 0
+                        ))
+                    }
+                    return@launch
+                }
+
+                // Load mezzo data from previous giornaliera
+                val previousMezzoData = mezzoGiornalieraRepository
+                    .getByGiornalieraId(previousGiornaliera.id)
+                    .first()
+
+                val previousDataMap = previousMezzoData.associateBy { it.mezzoId }
+
+                val currentSelections = _uiState.value.mezzoSelections.toMutableMap()
+                var updatedCount = 0
+
+                // For each currently selected mezzo, copy KM values from previous
+                currentSelections.forEach { (mezzoId, formData) ->
+                    if (formData.utilizzato) {
+                        val prev = previousDataMap[mezzoId]
+                        if (prev != null) {
+                            currentSelections[mezzoId] = formData.copy(
+                                kmAndata = prev.kmAndata,
+                                kmRitorno = prev.kmRitorno
+                            )
+                            updatedCount++
+                        }
+                    }
+                }
+
+                val dateStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.ITALIAN)
+                    .format(java.util.Date(previousGiornaliera.data))
+
+                val message = if (updatedCount > 0) {
+                    "KM applicati dalla giornaliera del $dateStr ($updatedCount mezz${if (updatedCount == 1) "o" else "i"} aggiornati)"
+                } else {
+                    "Nessun mezzo corrispondente trovato nella giornaliera del $dateStr"
+                }
+
+                _uiState.update { state ->
+                    state.copy(
+                        mezzoSelections = currentSelections,
+                        riepilogo = calculateRiepilogo(state.personaleSelections, currentSelections, state.attrezzaturaSelections),
+                        previousMezzoDataResult = PreviousMezzoDataResult(
+                            message = message,
+                            updatedCount = updatedCount
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(previousMezzoDataResult = PreviousMezzoDataResult(
+                        message = "Errore nel caricamento dati precedenti",
+                        updatedCount = 0
+                    ))
+                }
+            }
+        }
+    }
+
+    fun clearPreviousMezzoDataResult() {
+        _uiState.update { it.copy(previousMezzoDataResult = null) }
     }
 
     private fun calculateRiepilogo(
