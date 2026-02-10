@@ -103,8 +103,7 @@ data class WizardUiState(
     val showOfflineDialog: Boolean = false,
     val duplicateError: String? = null,
     val selectedDate: Long? = null,
-    val previousMezzoDataResult: PreviousMezzoDataResult? = null,
-    val presaVisionePOS: Boolean = false
+    val previousMezzoDataResult: PreviousMezzoDataResult? = null
 ) {
     val isOperationInProgress: Boolean
         get() = isSaving || pdfStatus is PdfStatus.Generating || pdfStatus is PdfStatus.Saving
@@ -293,8 +292,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                         attrezzaturaSelections = attrezzaturaSelections,
                         riepilogo = calculateRiepilogo(personaleSelections, mezzoSelections, attrezzaturaSelections),
                         note = giornaliera.note ?: "",
-                        selectedDate = giornaliera.data,
-                        presaVisionePOS = giornaliera.presaVisionePOS
+                        selectedDate = giornaliera.data
                     )
                 }
             } catch (e: Exception) {
@@ -341,10 +339,6 @@ class GiornalieraWizardViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(note = note)
         }
-    }
-
-    fun updatePresaVisionePOS(value: Boolean) {
-        _uiState.update { it.copy(presaVisionePOS = value) }
     }
 
     fun loadPreviousMezzoData() {
@@ -486,7 +480,6 @@ class GiornalieraWizardViewModel @Inject constructor(
                         giornalieraRepository.update(
                             existingGiornaliera.copy(
                                 note = _uiState.value.note.ifBlank { null },
-                                presaVisionePOS = _uiState.value.presaVisionePOS,
                                 updatedAt = System.currentTimeMillis()
                             )
                         )
@@ -517,8 +510,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                         cantiereId = cantiereId,
                         data = currentTime,
                         stato = StatoGiornaliera.BOZZA,
-                        note = _uiState.value.note.ifBlank { null },
-                        presaVisionePOS = _uiState.value.presaVisionePOS
+                        note = _uiState.value.note.ifBlank { null }
                     )
                     val newGiornalieraId = giornalieraRepository.insert(giornaliera)
                     saveRelations(newGiornalieraId)
@@ -587,7 +579,6 @@ class GiornalieraWizardViewModel @Inject constructor(
                     giornalieraRepository.update(
                         existingGiornaliera.copy(
                             note = _uiState.value.note.ifBlank { null },
-                            presaVisionePOS = _uiState.value.presaVisionePOS,
                             updatedAt = System.currentTimeMillis()
                         )
                     )
@@ -637,8 +628,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                     cantiereId = cantiereId,
                     data = currentTime,
                     stato = StatoGiornaliera.BOZZA,
-                    note = _uiState.value.note.ifBlank { null },
-                    presaVisionePOS = _uiState.value.presaVisionePOS
+                    note = _uiState.value.note.ifBlank { null }
                 )
                 val newId = giornalieraRepository.insert(giornaliera)
 

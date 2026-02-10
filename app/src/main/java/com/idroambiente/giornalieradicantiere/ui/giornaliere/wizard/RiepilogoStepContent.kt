@@ -78,8 +78,6 @@ fun RiepilogoStepContent(
     onNoteChanged: (String) -> Unit,
     selectedDate: Long?,
     onDateChanged: (Long?) -> Unit,
-    presaVisionePOS: Boolean,
-    onPresaVisionePOSChanged: (Boolean) -> Unit,
     isReadOnly: Boolean = false,
     snackbarHostState: SnackbarHostState? = null,
     modifier: Modifier = Modifier
@@ -414,30 +412,6 @@ fun RiepilogoStepContent(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 SummaryItem("Totale", "${riepilogo.totaleAttrezzatureUtilizzate}")
-            }
-        }
-
-        // Sezione Presa Visione POS
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = !isReadOnly) { onPresaVisionePOSChanged(!presaVisionePOS) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = presaVisionePOS,
-                    onCheckedChange = if (isReadOnly) null else onPresaVisionePOSChanged
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Presa visione POS",
-                    style = MaterialTheme.typography.bodyMedium
-                )
             }
         }
 
