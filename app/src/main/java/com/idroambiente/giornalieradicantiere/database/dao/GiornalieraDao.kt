@@ -30,6 +30,14 @@ interface GiornalieraDao {
     @Query("SELECT * FROM giornaliera WHERE cantiereId = :cantiereId AND data BETWEEN :startDate AND :endDate")
     suspend fun getByCantiereIdAndDateRange(cantiereId: Long, startDate: Long, endDate: Long): List<Giornaliera>
 
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM giornaliera WHERE data BETWEEN :startDate AND :endDate AND stato IN ('COMPLETATA', 'INVIATA'))"
+    )
+    suspend fun hasCompiledInDateRange(startDate: Long, endDate: Long): Boolean
+
+    @Query("SELECT COUNT(*) FROM giornaliera WHERE stato IN ('BOZZA', 'COMPLETATA')")
+    suspend fun countNotSent(): Int
+
     @Query("SELECT * FROM giornaliera WHERE stato = :stato ORDER BY data DESC")
     fun getByStato(stato: StatoGiornaliera): Flow<List<Giornaliera>>
 

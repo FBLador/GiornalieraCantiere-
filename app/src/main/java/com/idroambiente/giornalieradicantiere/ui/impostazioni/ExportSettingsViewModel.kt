@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.idroambiente.giornalieradicantiere.data.preferences.ExportBehavior
 import com.idroambiente.giornalieradicantiere.data.preferences.PreferencesRepository
 import com.idroambiente.giornalieradicantiere.data.preferences.StorageMode
+import com.idroambiente.giornalieradicantiere.notifications.DailyReminderScheduler
 import com.idroambiente.giornalieradicantiere.services.FileStorageService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,14 +22,31 @@ data class ExportSettingsUiState(
     val folderUri: String? = null,
     val folderName: String? = null,
     val exportBehavior: ExportBehavior = ExportBehavior.SHARE,
+    val dailyReminderEnabled: Boolean = false,
+    val dailyReminderHour: Int = 18,
+    val dailyReminderMinute: Int = 0,
     val isFolderAccessible: Boolean = true,
     val isLoading: Boolean = true
+)
+
+private data class StorageSettings(
+    val mode: StorageMode,
+    val uri: String?,
+    val name: String?,
+    val behavior: ExportBehavior
+)
+
+private data class ReminderSettings(
+    val enabled: Boolean,
+    val hour: Int,
+    val minute: Int
 )
 
 @HiltViewModel
 class ExportSettingsViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
-    private val fileStorageService: FileStorageService
+    private val fileStorageService: FileStorageService,
+    private val dailyReminderScheduler: DailyReminderScheduler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExportSettingsUiState())
@@ -40,21 +58,27 @@ class ExportSettingsViewModel @Inject constructor(
 
     private fun loadSettings() {
         viewModelScope.launch {
-            combine(
+            val storageFlow = combine(
                 preferencesRepository.storageMode,
                 preferencesRepository.exportFolderUri,
                 preferencesRepository.exportFolderName,
                 preferencesRepository.exportBehavior
             ) { mode, uri, name, behavior ->
-                data class Settings(
-                    val mode: StorageMode,
-                    val uri: String?,
-                    val name: String?,
-                    val behavior: ExportBehavior
-                )
-                Settings(mode, uri, name, behavior)
-            }.collect { settings ->
-                val isAccessible = if (settings.uri != null) {
+                StorageSettings(mode, uri, name, behavior)
+            }
+
+            val reminderFlow = combine(
+                preferencesRepository.dailyReminderEnabled,
+                preferencesRepository.dailyReminderHour,
+                preferencesRepository.dailyReminderMinute
+            ) { enabled, hour, minute ->
+                ReminderSettings(enabled, hour, minute)
+            }
+
+            combine(storageFlow, reminderFlow) { storage, reminder ->
+                Pair(storage, reminder)
+            }.collect { (storage, reminder) ->
+                val isAccessible = if (storage.uri != null) {
                     fileStorageService.isConfiguredFolderAccessible()
                 } else {
                     true
@@ -62,10 +86,13 @@ class ExportSettingsViewModel @Inject constructor(
                 
                 _uiState.update {
                     it.copy(
-                        storageMode = settings.mode,
-                        folderUri = settings.uri,
-                        folderName = settings.name,
-                        exportBehavior = settings.behavior,
+                        storageMode = storage.mode,
+                        folderUri = storage.uri,
+                        folderName = storage.name,
+                        exportBehavior = storage.behavior,
+                        dailyReminderEnabled = reminder.enabled,
+                        dailyReminderHour = reminder.hour,
+                        dailyReminderMinute = reminder.minute,
                         isFolderAccessible = isAccessible,
                         isLoading = false
                     )
@@ -114,5 +141,23 @@ class ExportSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.setExportBehavior(behavior)
         }
+    }
+
+    fun setDailyReminderEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setDailyReminderEnabled(enabled)
+            dailyReminderScheduler.syncScheduleFromPreferences()
+        }
+    }
+
+    fun setDailyReminderTime(hour: Int, minute: Int) {
+        viewModelScope.launch {
+            preferencesRepository.setDailyReminderTime(hour, minute)
+            dailyReminderScheduler.syncScheduleFromPreferences()
+        }
+    }
+
+    fun scheduleTestReminder() {
+        dailyReminderScheduler.scheduleTestReminder()
     }
 }

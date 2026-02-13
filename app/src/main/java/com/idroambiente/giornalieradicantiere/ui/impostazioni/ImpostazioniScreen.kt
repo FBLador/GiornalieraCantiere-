@@ -1,5 +1,11 @@
 package com.idroambiente.giornalieradicantiere.ui.impostazioni
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,9 +35,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.data.preferences.StorageMode
+import com.idroambiente.giornalieradicantiere.notifications.ReminderNotificationHelper
+import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
+
+private enum class TestNotificationMode {
+    IMMEDIATE,
+    SCHEDULED
+}
 
 @Composable
 fun ImpostazioniScreen(
@@ -44,18 +58,75 @@ fun ImpostazioniScreen(
 ) {
     val exportSettingsState by exportSettingsViewModel.uiState.collectAsState()
     var pendingModeChange by remember { mutableStateOf<StorageMode?>(null) }
+    var pendingTestNotificationMode by remember { mutableStateOf<TestNotificationMode?>(null) }
+    val context = LocalContext.current
+
+    val notificationsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        exportSettingsViewModel.setDailyReminderEnabled(granted)
+    }
+
+    val testNotificationsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val mode = pendingTestNotificationMode
+        pendingTestNotificationMode = null
+
+        if (!granted) {
+            Toast.makeText(context, "Permesso notifiche negato", Toast.LENGTH_SHORT).show()
+            return@rememberLauncherForActivityResult
+        }
+
+        if (!ReminderNotificationHelper.areSystemNotificationsEnabled(context)) {
+            Toast.makeText(
+                context,
+                "Notifiche disattivate a livello di sistema per questa app",
+                Toast.LENGTH_LONG
+            ).show()
+            return@rememberLauncherForActivityResult
+        }
+
+        if (ReminderNotificationHelper.isReminderChannelBlocked(context)) {
+            Toast.makeText(
+                context,
+                "Canale promemoria bloccato: abilitalo nelle impostazioni notifiche",
+                Toast.LENGTH_LONG
+            ).show()
+            return@rememberLauncherForActivityResult
+        }
+
+        when (mode) {
+            TestNotificationMode.IMMEDIATE -> {
+                ReminderNotificationHelper.showReminderNotification(
+                    context = context,
+                    isTest = true
+                )
+                Toast.makeText(context, "Notifica inviata", Toast.LENGTH_SHORT).show()
+            }
+
+            TestNotificationMode.SCHEDULED -> {
+                exportSettingsViewModel.scheduleTestReminder()
+                Toast.makeText(context, "Notifica di test programmata tra 20 secondi", Toast.LENGTH_SHORT).show()
+            }
+
+            null -> {
+                // no-op
+            }
+        }
+    }
 
     // Confirmation dialog for mode change
     pendingModeChange?.let { newMode ->
         AlertDialog(
             onDismissRequest = { pendingModeChange = null },
-            title = { Text("Cambiare modalità?") },
+            title = { Text("Cambiare modalita?") },
             text = {
                 Text(
                     if (newMode == StorageMode.LOCAL) {
-                        "Passando alla modalità locale, la configurazione Google Drive rimarrà salvata ma non verrà utilizzata."
+                        "Passando alla modalita locale, la configurazione Google Drive restera salvata ma non verra utilizzata."
                     } else {
-                        "Passando a Google Drive, il comportamento all'invio verrà impostato su \"Salva automaticamente\"."
+                        "Passando a Google Drive, il comportamento all'invio verra impostato su \"Salva automaticamente\"."
                     }
                 )
             },
@@ -142,33 +213,96 @@ fun ImpostazioniScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Sezione Salvataggio PDF - Selettore modalità
-            /*StorageModeSelector(
-                currentMode = exportSettingsState.storageMode,
-                onModeSelected = { mode ->
-                    if (mode == exportSettingsState.storageMode) return@StorageModeSelector
-                    // Check if current mode is configured
-                    val isCurrentConfigured = when (exportSettingsState.storageMode) {
-                        StorageMode.GOOGLE_DRIVE -> true // always show confirmation leaving Drive
-                        StorageMode.LOCAL -> exportSettingsState.folderUri != null
-                    }
-                    if (isCurrentConfigured) {
-                        pendingModeChange = mode
+            NotificationSettingsSection(
+                isEnabled = exportSettingsState.dailyReminderEnabled,
+                hour = exportSettingsState.dailyReminderHour,
+                minute = exportSettingsState.dailyReminderMinute,
+                onEnabledChange = { enabled ->
+                    if (!enabled) {
+                        exportSettingsViewModel.setDailyReminderEnabled(false)
+                    } else if (
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        notificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
-                        exportSettingsViewModel.setStorageMode(mode)
+                        exportSettingsViewModel.setDailyReminderEnabled(true)
+                    }
+                },
+                onTimeChange = { hour, minute ->
+                    exportSettingsViewModel.setDailyReminderTime(hour, minute)
+                },
+                onSendImmediateTestNotification = {
+                    if (
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        pendingTestNotificationMode = TestNotificationMode.IMMEDIATE
+                        testNotificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else if (!ReminderNotificationHelper.areSystemNotificationsEnabled(context)) {
+                        Toast.makeText(
+                            context,
+                            "Notifiche disattivate a livello di sistema per questa app",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else if (ReminderNotificationHelper.isReminderChannelBlocked(context)) {
+                        Toast.makeText(
+                            context,
+                            "Canale promemoria bloccato: abilitalo nelle impostazioni notifiche",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        ReminderNotificationHelper.showReminderNotification(
+                            context = context,
+                            isTest = true
+                        )
+                        Toast.makeText(context, "Notifica inviata", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onScheduleTestNotification = {
+                    if (
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        pendingTestNotificationMode = TestNotificationMode.SCHEDULED
+                        testNotificationsPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else if (!ReminderNotificationHelper.areSystemNotificationsEnabled(context)) {
+                        Toast.makeText(
+                            context,
+                            "Notifiche disattivate a livello di sistema per questa app",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else if (ReminderNotificationHelper.isReminderChannelBlocked(context)) {
+                        Toast.makeText(
+                            context,
+                            "Canale promemoria bloccato: abilitalo nelle impostazioni notifiche",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        exportSettingsViewModel.scheduleTestReminder()
+                        Toast.makeText(context, "Notifica di test programmata tra 20 secondi", Toast.LENGTH_SHORT).show()
                     }
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
-            */
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Sezione configurazione specifica per modalità
+            // Sezione configurazione specifica per modalita
             when (exportSettingsState.storageMode) {
                 StorageMode.GOOGLE_DRIVE -> {
                     // Google Drive settings
                     GoogleDriveSettingsSection()
                 }
+
                 StorageMode.LOCAL -> {
                     // Local folder settings (SAF)
                     ExportSettingsSection(

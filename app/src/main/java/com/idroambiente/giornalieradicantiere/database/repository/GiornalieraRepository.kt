@@ -41,6 +41,14 @@ class GiornalieraRepository(private val giornalieraDao: GiornalieraDao) {
         return existing.isNotEmpty()
     }
 
+    suspend fun hasCompiledForDay(date: Long): Boolean {
+        val normalizedDate = normalizeToStartOfDay(date)
+        val endOfDay = normalizedDate + 86_399_999L
+        return giornalieraDao.hasCompiledInDateRange(normalizedDate, endOfDay)
+    }
+
+    suspend fun countNotSent(): Int = giornalieraDao.countNotSent()
+
     private fun normalizeToStartOfDay(timestamp: Long): Long {
         val calendar = Calendar.getInstance().apply {
             timeInMillis = timestamp

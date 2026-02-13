@@ -85,6 +85,7 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
+    ksp(libs.hilt.androidx.compiler)
     
     // DocumentFile for SAF operations
     implementation(libs.androidx.documentfile)

@@ -155,6 +155,48 @@ class PreferencesRepository @Inject constructor(
         }
     }
 
+    // ==================== Daily Reminder Notification ====================
+
+    /**
+     * Se il promemoria giornaliero è attivo.
+     */
+    val dailyReminderEnabled: Flow<Boolean> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.DAILY_REMINDER_ENABLED] ?: false
+    }
+
+    /**
+     * Ora del promemoria giornaliero (0..23).
+     */
+    val dailyReminderHour: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.DAILY_REMINDER_HOUR] ?: 18
+    }
+
+    /**
+     * Minuto del promemoria giornaliero (0..59).
+     */
+    val dailyReminderMinute: Flow<Int> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.DAILY_REMINDER_MINUTE] ?: 0
+    }
+
+    /**
+     * Abilita/disabilita il promemoria giornaliero.
+     */
+    suspend fun setDailyReminderEnabled(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DAILY_REMINDER_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Imposta l'orario del promemoria giornaliero.
+     */
+    suspend fun setDailyReminderTime(hour: Int, minute: Int) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DAILY_REMINDER_HOUR] = hour.coerceIn(0, 23)
+            preferences[PreferencesKeys.DAILY_REMINDER_MINUTE] = minute.coerceIn(0, 59)
+        }
+    }
+
     // ==================== Export Behavior ====================
     
     /**

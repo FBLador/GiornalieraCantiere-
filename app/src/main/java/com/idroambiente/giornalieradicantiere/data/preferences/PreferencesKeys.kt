@@ -1,6 +1,7 @@
 package com.idroambiente.giornalieradicantiere.data.preferences
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 object PreferencesKeys {
@@ -22,6 +23,11 @@ object PreferencesKeys {
     // Setup / onboarding
     val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
     val GOOGLE_USER_DISPLAY_NAME = stringPreferencesKey("google_user_display_name")
+
+    // Daily reminder notification
+    val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
+    val DAILY_REMINDER_HOUR = intPreferencesKey("daily_reminder_hour")
+    val DAILY_REMINDER_MINUTE = intPreferencesKey("daily_reminder_minute")
 }
 
 /**
