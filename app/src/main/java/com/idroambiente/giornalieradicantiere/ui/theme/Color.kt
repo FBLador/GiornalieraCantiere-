@@ -23,6 +23,7 @@ val ErrorContainerLight = Color(0xFFFDEDED)
 val OnErrorContainerLight = Color(0xFF5C1010)
 val SuccessLight = Color(0xFF2E7D32)
 val OnSuccessLight = Color(0xFFFFFFFF)
+val InversePrimaryLight = BlueLighter    // #9DCFE6 - versione chiara per inverse
 
 // Dark theme
 val BluePrimaryDarkTheme = Color(0xFF00527E)
@@ -43,3 +44,18 @@ val ErrorContainerDark = Color(0xFF5C1010)
 val OnErrorContainerDark = Color(0xFFFDEDED)
 val SuccessDark = Color(0xFF81C784)
 val OnSuccessDark = Color(0xFF0D130E)
+val InversePrimaryDark = BluePrimaryDark // #003A59 - versione scura per inverse
+
+// Surface container - Light theme
+val SurfaceContainerLowestLight = Color(0xFFFFFFFF)
+val SurfaceContainerLowLight = Color(0xFFF5F8FA)
+val SurfaceContainerLight = Color(0xFFEFF3F6)
+val SurfaceContainerHighLight = Color(0xFFE8EEF2)
+val SurfaceContainerHighestLight = Color(0xFFE1E9EE)
+
+// Surface container - Dark theme
+val SurfaceContainerLowestDark = Color(0xFF0A0F14)
+val SurfaceContainerLowDark = Color(0xFF151C24)
+val SurfaceContainerDark = Color(0xFF1A2230)
+val SurfaceContainerHighDark = Color(0xFF222C38)
+val SurfaceContainerHighestDark = Color(0xFF2C3642)

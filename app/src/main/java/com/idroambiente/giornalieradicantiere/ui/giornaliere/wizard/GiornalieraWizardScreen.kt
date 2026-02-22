@@ -313,14 +313,13 @@ fun GiornalieraWizardScreen(
             title = { Text("Uscire dalla giornaliera?") },
             text = { Text("Puoi salvare come bozza e continuare in un secondo momento.") },
             confirmButton = {
-                TextButton(
+                PrimaryButton(
                     onClick = {
                         showAnnullaConfirmDialog = false
                         viewModel.saveGiornaliera()
-                    }
-                ) {
-                    Text("Salva bozza")
-                }
+                    },
+                    content = { Text("Salva bozza") }
+                )
             },
             dismissButton = {
                 Row {
@@ -333,7 +332,7 @@ fun GiornalieraWizardScreen(
                             onNavigateBack()
                         }
                     ) {
-                        Text("Scarta")
+                        Text("Scarta", color = MaterialTheme.colorScheme.error)
                     }
                 }
             }

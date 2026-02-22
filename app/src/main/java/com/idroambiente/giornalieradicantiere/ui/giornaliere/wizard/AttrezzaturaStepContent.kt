@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -246,7 +247,12 @@ private fun AttrezzaturaEditMode(
                                             attrezzatura.id,
                                             AttrezzaturaFormData(utilizzata = checked)
                                         )
-                                    }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = MaterialTheme.colorScheme.primary,
+                                        uncheckedColor = MaterialTheme.colorScheme.outline,
+                                        checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                                    )
                                 )
                                 Text(
                                     text = attrezzatura.nome,

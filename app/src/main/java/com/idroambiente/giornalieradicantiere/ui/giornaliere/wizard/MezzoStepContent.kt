@@ -23,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -298,7 +299,12 @@ private fun MezzoSelectionPhase(
                         checked = formData.utilizzato,
                         onCheckedChange = { checked ->
                             onMezzoDataChanged(mezzo.id, formData.copy(utilizzato = checked))
-                        }
+                        },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary,
+                            uncheckedColor = MaterialTheme.colorScheme.outline,
+                            checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     )
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -496,7 +502,12 @@ private fun MezzoDataEntryPhase(
                         onCheckedChange = { checked ->
                             selectedIds = if (checked) selectedIds + mezzo.id
                             else selectedIds - mezzo.id
-                        }
+                        },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary,
+                            uncheckedColor = MaterialTheme.colorScheme.outline,
+                            checkmarkColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     )
                     Spacer(Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {

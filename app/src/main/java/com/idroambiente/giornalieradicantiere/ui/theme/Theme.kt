@@ -36,7 +36,15 @@ private val LightColorScheme = lightColorScheme(
     onErrorContainer = OnErrorContainerLight,
     inverseSurface = SurfaceDark,
     inverseOnSurface = OnSurfaceDark,
-    outlineVariant = BlueMuted
+    inversePrimary = InversePrimaryLight,
+    surfaceTint = BluePrimary,
+    scrim = Color(0xFF000000),
+    outlineVariant = BlueMuted,
+    surfaceContainerLowest = SurfaceContainerLowestLight,
+    surfaceContainerLow = SurfaceContainerLowLight,
+    surfaceContainer = SurfaceContainerLight,
+    surfaceContainerHigh = SurfaceContainerHighLight,
+    surfaceContainerHighest = SurfaceContainerHighestLight
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -65,7 +73,15 @@ private val DarkColorScheme = darkColorScheme(
     onErrorContainer = OnErrorContainerDark,
     inverseSurface = BackgroundLight,
     inverseOnSurface = OnSurfaceLight,
-    outlineVariant = OutlineDark
+    inversePrimary = InversePrimaryDark,
+    surfaceTint = BluePrimaryDarkTheme,
+    scrim = Color(0xFF000000),
+    outlineVariant = OutlineDark,
+    surfaceContainerLowest = SurfaceContainerLowestDark,
+    surfaceContainerLow = SurfaceContainerLowDark,
+    surfaceContainer = SurfaceContainerDark,
+    surfaceContainerHigh = SurfaceContainerHighDark,
+    surfaceContainerHighest = SurfaceContainerHighestDark
 )
 
 private val AppShapes = Shapes(
