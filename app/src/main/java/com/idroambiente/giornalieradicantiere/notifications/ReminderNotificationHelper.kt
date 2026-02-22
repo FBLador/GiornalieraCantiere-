@@ -59,6 +59,14 @@ object ReminderNotificationHelper {
         )
     }
 
+    fun cancelReminderNotification(context: Context) {
+        NotificationManagerCompat.from(context).cancel(REMINDER_NOTIFICATION_ID)
+    }
+
+    fun cancelNotSentNotification(context: Context) {
+        NotificationManagerCompat.from(context).cancel(NOT_SENT_NOTIFICATION_ID)
+    }
+
     fun showNotSentNotification(context: Context, notSentCount: Int) {
         if (notSentCount <= 0) return
         if (!hasRuntimePermission(context)) return

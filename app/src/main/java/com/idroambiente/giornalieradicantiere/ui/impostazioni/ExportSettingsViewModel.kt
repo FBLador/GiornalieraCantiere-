@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.idroambiente.giornalieradicantiere.data.preferences.PreferencesRepository.Companion.DEFAULT_REMINDER_DAYS
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ data class ExportSettingsUiState(
     val dailyReminderEnabled: Boolean = false,
     val dailyReminderHour: Int = 18,
     val dailyReminderMinute: Int = 0,
+    val dailyReminderDays: Set<Int> = DEFAULT_REMINDER_DAYS,
     val isFolderAccessible: Boolean = true,
     val isLoading: Boolean = true
 )
@@ -39,7 +41,8 @@ private data class StorageSettings(
 private data class ReminderSettings(
     val enabled: Boolean,
     val hour: Int,
-    val minute: Int
+    val minute: Int,
+    val days: Set<Int>
 )
 
 @HiltViewModel
@@ -70,9 +73,10 @@ class ExportSettingsViewModel @Inject constructor(
             val reminderFlow = combine(
                 preferencesRepository.dailyReminderEnabled,
                 preferencesRepository.dailyReminderHour,
-                preferencesRepository.dailyReminderMinute
-            ) { enabled, hour, minute ->
-                ReminderSettings(enabled, hour, minute)
+                preferencesRepository.dailyReminderMinute,
+                preferencesRepository.dailyReminderDays
+            ) { enabled, hour, minute, days ->
+                ReminderSettings(enabled, hour, minute, days)
             }
 
             combine(storageFlow, reminderFlow) { storage, reminder ->
@@ -93,6 +97,7 @@ class ExportSettingsViewModel @Inject constructor(
                         dailyReminderEnabled = reminder.enabled,
                         dailyReminderHour = reminder.hour,
                         dailyReminderMinute = reminder.minute,
+                        dailyReminderDays = reminder.days,
                         isFolderAccessible = isAccessible,
                         isLoading = false
                     )
@@ -147,6 +152,12 @@ class ExportSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.setDailyReminderEnabled(enabled)
             dailyReminderScheduler.syncScheduleFromPreferences()
+        }
+    }
+
+    fun setDailyReminderDays(days: Set<Int>) {
+        viewModelScope.launch {
+            preferencesRepository.setDailyReminderDays(days)
         }
     }
 

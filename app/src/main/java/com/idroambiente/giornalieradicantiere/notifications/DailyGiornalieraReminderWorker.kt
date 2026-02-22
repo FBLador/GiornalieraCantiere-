@@ -9,6 +9,7 @@ import com.idroambiente.giornalieradicantiere.database.repository.GiornalieraRep
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
+import java.util.Calendar
 
 @HiltWorker
 class DailyGiornalieraReminderWorker @AssistedInject constructor(
@@ -38,20 +39,33 @@ class DailyGiornalieraReminderWorker @AssistedInject constructor(
             return Result.success()
         }
 
-        val hasCompiledToday = giornalieraRepository.hasCompiledForDay(System.currentTimeMillis())
-        if (!hasCompiledToday && ReminderNotificationHelper.hasRuntimePermission(applicationContext)) {
-            ReminderNotificationHelper.showReminderNotification(
-                context = applicationContext,
-                isTest = false
-            )
+        // Day-of-week filter: skip notifications if today is not an enabled day
+        val enabledDays = preferencesRepository.dailyReminderDays.first()
+        val todayDow = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
+        if (todayDow !in enabledDays) {
+            dailyReminderScheduler.scheduleNextFromWorker()
+            return Result.success()
         }
 
-        val notSentCount = giornalieraRepository.countNotSent()
-        if (notSentCount > 0 && ReminderNotificationHelper.hasRuntimePermission(applicationContext)) {
-            ReminderNotificationHelper.showNotSentNotification(
-                context = applicationContext,
-                notSentCount = notSentCount
-            )
+        // Mutually exclusive notifications: "da inviare" has priority
+        if (ReminderNotificationHelper.hasRuntimePermission(applicationContext)) {
+            val notSentCount = giornalieraRepository.countNotSent()
+            if (notSentCount > 0) {
+                ReminderNotificationHelper.showNotSentNotification(
+                    context = applicationContext,
+                    notSentCount = notSentCount
+                )
+                ReminderNotificationHelper.cancelReminderNotification(applicationContext)
+            } else {
+                val hasCompiledToday = giornalieraRepository.hasCompiledForDay(System.currentTimeMillis())
+                if (!hasCompiledToday) {
+                    ReminderNotificationHelper.showReminderNotification(
+                        context = applicationContext,
+                        isTest = false
+                    )
+                }
+                ReminderNotificationHelper.cancelNotSentNotification(applicationContext)
+            }
         }
 
         // Re-schedule the next daily run at the configured time.

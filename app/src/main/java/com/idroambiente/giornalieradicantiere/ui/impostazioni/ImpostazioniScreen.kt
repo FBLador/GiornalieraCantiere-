@@ -217,6 +217,7 @@ fun ImpostazioniScreen(
                 isEnabled = exportSettingsState.dailyReminderEnabled,
                 hour = exportSettingsState.dailyReminderHour,
                 minute = exportSettingsState.dailyReminderMinute,
+                enabledDays = exportSettingsState.dailyReminderDays,
                 onEnabledChange = { enabled ->
                     if (!enabled) {
                         exportSettingsViewModel.setDailyReminderEnabled(false)
@@ -234,6 +235,9 @@ fun ImpostazioniScreen(
                 },
                 onTimeChange = { hour, minute ->
                     exportSettingsViewModel.setDailyReminderTime(hour, minute)
+                },
+                onDaysChange = { days ->
+                    exportSettingsViewModel.setDailyReminderDays(days)
                 },
                 onSendImmediateTestNotification = {
                     if (

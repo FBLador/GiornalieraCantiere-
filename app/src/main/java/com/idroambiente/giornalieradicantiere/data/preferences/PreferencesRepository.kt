@@ -179,6 +179,23 @@ class PreferencesRepository @Inject constructor(
     }
 
     /**
+     * Giorni della settimana in cui il promemoria è attivo (Calendar.DAY_OF_WEEK: 2=LUN..6=VEN).
+     */
+    val dailyReminderDays: Flow<Set<Int>> = dataStore.data.map { preferences ->
+        val stringSet = preferences[PreferencesKeys.DAILY_REMINDER_DAYS]
+        stringSet?.mapNotNull { it.toIntOrNull() }?.toSet() ?: DEFAULT_REMINDER_DAYS
+    }
+
+    /**
+     * Imposta i giorni della settimana per il promemoria.
+     */
+    suspend fun setDailyReminderDays(days: Set<Int>) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DAILY_REMINDER_DAYS] = days.map { it.toString() }.toSet()
+        }
+    }
+
+    /**
      * Abilita/disabilita il promemoria giornaliero.
      */
     suspend fun setDailyReminderEnabled(enabled: Boolean) {
@@ -214,5 +231,10 @@ class PreferencesRepository @Inject constructor(
         dataStore.edit { preferences ->
             preferences[PreferencesKeys.EXPORT_BEHAVIOR] = behavior.value
         }
+    }
+
+    companion object {
+        /** Lun-Ven (Calendar.MONDAY..Calendar.FRIDAY = 2..6) */
+        val DEFAULT_REMINDER_DAYS = setOf(2, 3, 4, 5, 6)
     }
 }

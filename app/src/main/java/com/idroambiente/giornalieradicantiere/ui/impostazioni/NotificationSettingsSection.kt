@@ -1,15 +1,19 @@
 package com.idroambiente.giornalieradicantiere.ui.impostazioni
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -26,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import java.util.Calendar
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,8 +39,10 @@ fun NotificationSettingsSection(
     isEnabled: Boolean,
     hour: Int,
     minute: Int,
+    enabledDays: Set<Int>,
     onEnabledChange: (Boolean) -> Unit,
     onTimeChange: (Int, Int) -> Unit,
+    onDaysChange: (Set<Int>) -> Unit,
     onSendImmediateTestNotification: () -> Unit,
     onScheduleTestNotification: () -> Unit,
     modifier: Modifier = Modifier
@@ -56,13 +63,17 @@ fun NotificationSettingsSection(
         ListItem(
             headlineContent = { Text("Promemoria giornaliero") },
             supportingContent = {
-                Text(
-                    if (isEnabled) {
-                        "Attivo ogni giorno alle $timeLabel"
-                    } else {
-                        "Disattivato"
+                if (isEnabled) {
+                    Column {
+                        Text("Attivo alle $timeLabel")
+                        Text(formatEnabledDays(enabledDays))
                     }
-                )
+                } else {
+                    Column {
+                        Text("Disattivato")
+                        Text("") // placeholder per mantenere 2 righe
+                    }
+                }
             },
             leadingContent = {
                 Icon(
@@ -108,6 +119,26 @@ fun NotificationSettingsSection(
         HorizontalDivider()
 
         ListItem(
+            headlineContent = { Text("Giorni promemoria") },
+            supportingContent = {
+                DayOfWeekSelector(
+                    enabledDays = enabledDays,
+                    onDaysChange = onDaysChange,
+                    enabled = isEnabled
+                )
+            },
+            leadingContent = {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        HorizontalDivider()
+
+        /*ListItem(
             headlineContent = { Text("Mostra notifica adesso") },
             supportingContent = {
                 Text("Invia subito una notifica di test (senza WorkManager)")
@@ -141,7 +172,7 @@ fun NotificationSettingsSection(
                 .fillMaxWidth()
                 .clickable { onScheduleTestNotification() }
         )
-        HorizontalDivider()
+        HorizontalDivider()*/
     }
 
     if (showTimePicker) {
@@ -174,4 +205,75 @@ fun NotificationSettingsSection(
             }
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DayOfWeekSelector(
+    enabledDays: Set<Int>,
+    onDaysChange: (Set<Int>) -> Unit,
+    enabled: Boolean
+) {
+    // Calendar.SUNDAY=1, MONDAY=2, ..., SATURDAY=7
+    // Display order: Lun(2), Mar(3), Mer(4), Gio(5), Ven(6), Sab(7), Dom(1)
+    val daysInOrder = listOf(
+        Calendar.MONDAY to "L",
+        Calendar.TUESDAY to "M",
+        Calendar.WEDNESDAY to "M",
+        Calendar.THURSDAY to "G",
+        Calendar.FRIDAY to "V",
+        Calendar.SATURDAY to "S",
+        Calendar.SUNDAY to "D"
+    )
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+    ) {
+        daysInOrder.forEach { (dayValue, label) ->
+            val isSelected = dayValue in enabledDays
+            FilterChip(
+                selected = isSelected,
+                onClick = {
+                    val newDays = if (isSelected) {
+                        enabledDays - dayValue
+                    } else {
+                        enabledDays + dayValue
+                    }
+                    onDaysChange(newDays)
+                },
+                label = {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                },
+                enabled = enabled,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+private fun formatEnabledDays(days: Set<Int>): String {
+    if (days.size == 7) return "ogni giorno"
+    if (days == setOf(2, 3, 4, 5, 6)) return "Lun-Ven"
+    if (days.isEmpty()) return ""
+
+    val dayNames = mapOf(
+        Calendar.MONDAY to "Lun",
+        Calendar.TUESDAY to "Mar",
+        Calendar.WEDNESDAY to "Mer",
+        Calendar.THURSDAY to "Gio",
+        Calendar.FRIDAY to "Ven",
+        Calendar.SATURDAY to "Sab",
+        Calendar.SUNDAY to "Dom"
+    )
+    val order = listOf(
+        Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY,
+        Calendar.THURSDAY, Calendar.FRIDAY, Calendar.SATURDAY, Calendar.SUNDAY
+    )
+    return order.filter { it in days }.mapNotNull { dayNames[it] }.joinToString(", ")
 }

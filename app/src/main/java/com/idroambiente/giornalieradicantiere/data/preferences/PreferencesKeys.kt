@@ -3,6 +3,7 @@ package com.idroambiente.giornalieradicantiere.data.preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 
 object PreferencesKeys {
     // Local folder settings (SAF)
@@ -28,6 +29,7 @@ object PreferencesKeys {
     val DAILY_REMINDER_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
     val DAILY_REMINDER_HOUR = intPreferencesKey("daily_reminder_hour")
     val DAILY_REMINDER_MINUTE = intPreferencesKey("daily_reminder_minute")
+    val DAILY_REMINDER_DAYS = stringSetPreferencesKey("daily_reminder_days")
 }
 
 /**
