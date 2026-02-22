@@ -20,6 +20,7 @@ import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.GiornalieraWizardScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.AttrezzaturaListScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.ImpostazioniScreen
+import com.idroambiente.giornalieradicantiere.ui.impostazioni.ListeGestioneScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.MezzoListScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.PersonaleListScreen
 import com.idroambiente.giornalieradicantiere.ui.setup.SetupScreen
@@ -116,15 +117,15 @@ fun AppNavHost(
         composable(Routes.IMPOSTAZIONI) {
             ImpostazioniScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToPersonaleList = {
-                    navController.navigate(Routes.PERSONALE_LIST)
-                },
-                onNavigateToMezzoList = {
-                    navController.navigate(Routes.MEZZO_LIST)
-                },
-                onNavigateToAttrezzaturaList = {
-                    navController.navigate(Routes.ATTREZZATURA_LIST)
+                onNavigateToListeGestione = {
+                    navController.navigate(Routes.LISTE_GESTIONE)
                 }
+            )
+        }
+
+        composable(Routes.LISTE_GESTIONE) {
+            ListeGestioneScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

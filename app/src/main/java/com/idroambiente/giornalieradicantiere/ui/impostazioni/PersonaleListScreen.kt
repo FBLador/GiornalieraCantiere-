@@ -125,6 +125,7 @@ fun PersonaleListScreen(
         duplicateDialogState?.let { state ->
             AlertDialog(
                 onDismissRequest = { viewModel.dismissDuplicateDialog() },
+                containerColor = MaterialTheme.colorScheme.surface,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Warning,
@@ -213,6 +214,7 @@ fun CreatePersonaleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Nuova Persona") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -258,6 +260,7 @@ fun EditPersonaleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Modifica persona") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

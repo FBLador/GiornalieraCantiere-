@@ -50,11 +50,11 @@ class MezzoViewModel @Inject constructor(
         _mezzoToEdit.value = null
     }
 
-    fun createMezzo(nome: String, targa: String) {
+    fun createMezzo(nome: String, targa: String, codiceArticoloKm: String, codiceArticoloGiorni: String) {
         viewModelScope.launch {
             _errorMessage.value = null
             val trimmedTarga = targa.trim().uppercase()
-            
+
             // Check for duplicate targa
             val existingMezzo = mezzoRepository.getByTarga(trimmedTarga)
             if (existingMezzo != null) {
@@ -62,18 +62,23 @@ class MezzoViewModel @Inject constructor(
                 return@launch
             }
 
-            val mezzo = Mezzo(nome = nome.trim(), targa = trimmedTarga)
+            val mezzo = Mezzo(
+                nome = nome.trim(),
+                targa = trimmedTarga,
+                codiceArticoloKm = codiceArticoloKm.uppercase().trim(),
+                codiceArticoloGiorni = codiceArticoloGiorni.uppercase().trim()
+            )
             mezzoRepository.insert(mezzo)
             _showCreateDialog.value = false
         }
     }
 
-    fun updateMezzo(nome: String, targa: String) {
+    fun updateMezzo(nome: String, targa: String, codiceArticoloKm: String, codiceArticoloGiorni: String) {
         viewModelScope.launch {
             _errorMessage.value = null
             val current = _mezzoToEdit.value ?: return@launch
             val trimmedTarga = targa.trim().uppercase()
-            
+
             // Check for duplicate targa (excluding current mezzo)
             val existingMezzo = mezzoRepository.getByTarga(trimmedTarga)
             if (existingMezzo != null && existingMezzo.id != current.id) {
@@ -82,7 +87,12 @@ class MezzoViewModel @Inject constructor(
             }
 
             mezzoRepository.update(
-                current.copy(nome = nome.trim(), targa = trimmedTarga)
+                current.copy(
+                    nome = nome.trim(),
+                    targa = trimmedTarga,
+                    codiceArticoloKm = codiceArticoloKm.uppercase().trim(),
+                    codiceArticoloGiorni = codiceArticoloGiorni.uppercase().trim()
+                )
             )
             _mezzoToEdit.value = null
         }

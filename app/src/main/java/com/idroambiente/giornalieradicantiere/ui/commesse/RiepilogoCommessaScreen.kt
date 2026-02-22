@@ -335,6 +335,7 @@ fun RiepilogoCommessaScreen(
     pdfExportSuccess?.let { result ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissExportSuccess() },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text("PDF esportato") },
             text = {
                 Column {
@@ -365,6 +366,7 @@ fun RiepilogoCommessaScreen(
     pdfExportError?.let { error ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissExportError() },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text("Errore esportazione") },
             text = { Text(error) },
             confirmButton = {
@@ -379,6 +381,7 @@ fun RiepilogoCommessaScreen(
     showConfigError?.let { message ->
         AlertDialog(
             onDismissRequest = { viewModel.dismissConfigError() },
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = {
                 Icon(
                     imageVector = Icons.Default.Settings,
@@ -400,6 +403,7 @@ fun RiepilogoCommessaScreen(
     if (showOfflineDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissOfflineDialog() },
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = {
                 Icon(
                     imageVector = Icons.Default.WifiOff,

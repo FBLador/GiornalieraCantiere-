@@ -125,6 +125,7 @@ fun GiornaliereScreen(
         errorMessage?.let { error ->
             AlertDialog(
                 onDismissRequest = { viewModel.clearError() },
+                containerColor = MaterialTheme.colorScheme.surface,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Warning,

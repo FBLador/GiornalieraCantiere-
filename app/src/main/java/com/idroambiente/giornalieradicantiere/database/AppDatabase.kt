@@ -35,7 +35,7 @@ import com.idroambiente.giornalieradicantiere.database.entities.PersonaleGiornal
         Attrezzatura::class,
         AttrezzaturaGiornaliera::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

@@ -164,12 +164,13 @@ fun GiornalieraWizardScreen(
     // Error Dialog
     if (showErrorDialog && errorMessage != null) {
         AlertDialog(
-            onDismissRequest = { 
+            onDismissRequest = {
                 showErrorDialog = false
                 errorMessage = null
                 viewModel.resetPdfStatus()
                 viewModel.clearDuplicateError()
             },
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = {
                 Icon(
                     imageVector = Icons.Default.Warning,
@@ -205,6 +206,7 @@ fun GiornalieraWizardScreen(
                 viewModel.resetPdfStatus()
                 onNavigateBack()
             },
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
@@ -261,6 +263,7 @@ fun GiornalieraWizardScreen(
     if (uiState.showConfigErrorDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissConfigErrorDialog() },
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = {
                 Icon(
                     imageVector = Icons.Default.Settings,
@@ -283,6 +286,7 @@ fun GiornalieraWizardScreen(
     if (uiState.showOfflineDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.dismissOfflineDialog() },
+            containerColor = MaterialTheme.colorScheme.surface,
             icon = {
                 Icon(
                     imageVector = Icons.Default.WifiOff,
@@ -305,6 +309,7 @@ fun GiornalieraWizardScreen(
     if (showAnnullaConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showAnnullaConfirmDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text("Uscire dalla giornaliera?") },
             text = { Text("Puoi salvare come bozza e continuare in un secondo momento.") },
             confirmButton = {

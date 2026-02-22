@@ -106,8 +106,8 @@ fun MezzoListScreen(
 
         if (showCreateDialog) {
             CreateMezzoDialog(
-                onConfirm = { nome, targa ->
-                    viewModel.createMezzo(nome, targa)
+                onConfirm = { nome, targa, codiceArticoloKm, codiceArticoloGiorni ->
+                    viewModel.createMezzo(nome, targa, codiceArticoloKm, codiceArticoloGiorni)
                 },
                 onDismiss = { viewModel.hideCreateDialog() }
             )
@@ -116,7 +116,9 @@ fun MezzoListScreen(
         mezzoToEdit?.let { mezzo ->
             EditMezzoDialog(
                 mezzo = mezzo,
-                onConfirm = { nome, targa -> viewModel.updateMezzo(nome, targa) },
+                onConfirm = { nome, targa, codiceArticoloKm, codiceArticoloGiorni ->
+                    viewModel.updateMezzo(nome, targa, codiceArticoloKm, codiceArticoloGiorni)
+                },
                 onDismiss = { viewModel.hideEditDialog() }
             )
         }
@@ -125,6 +127,7 @@ fun MezzoListScreen(
         errorMessage?.let { error ->
             AlertDialog(
                 onDismissRequest = { viewModel.clearError() },
+                containerColor = MaterialTheme.colorScheme.surface,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Warning,
@@ -172,6 +175,19 @@ fun MezzoItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                val codiciInfo = buildList {
+                    if (mezzo.codiceArticoloKm.isNotBlank()) add("Km: ${mezzo.codiceArticoloKm}")
+                    if (mezzo.codiceArticoloGiorni.isNotBlank()) add("Giorni: ${mezzo.codiceArticoloGiorni}")
+                }
+                if (codiciInfo.isNotEmpty()) {
+                    Text(
+                        text = codiciInfo.joinToString(" | "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                 IconButton(onClick = onEdit) {
@@ -195,14 +211,17 @@ fun MezzoItem(
 
 @Composable
 fun CreateMezzoDialog(
-    onConfirm: (nome: String, targa: String) -> Unit,
+    onConfirm: (nome: String, targa: String, codiceArticoloKm: String, codiceArticoloGiorni: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var nome by remember { mutableStateOf("") }
     var targa by remember { mutableStateOf("") }
+    var codiceArticoloKm by remember { mutableStateOf("") }
+    var codiceArticoloGiorni by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Nuovo Mezzo") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -220,12 +239,26 @@ fun CreateMezzoDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                OutlinedTextField(
+                    value = codiceArticoloKm,
+                    onValueChange = { codiceArticoloKm = it.uppercase().take(20) },
+                    label = { Text("Codice Articolo Km") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = codiceArticoloGiorni,
+                    onValueChange = { codiceArticoloGiorni = it.uppercase().take(20) },
+                    label = { Text("Codice Articolo Giorni (opzionale)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             PrimaryButton(
-                onClick = { onConfirm(nome, targa) },
-                enabled = nome.isNotBlank() && targa.isNotBlank(),
+                onClick = { onConfirm(nome, targa, codiceArticoloKm, codiceArticoloGiorni) },
+                enabled = nome.isNotBlank() && targa.isNotBlank() && codiceArticoloKm.isNotBlank(),
                 content = { Text("Crea") }
             )
         },
@@ -240,14 +273,17 @@ fun CreateMezzoDialog(
 @Composable
 fun EditMezzoDialog(
     mezzo: Mezzo,
-    onConfirm: (nome: String, targa: String) -> Unit,
+    onConfirm: (nome: String, targa: String, codiceArticoloKm: String, codiceArticoloGiorni: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var nome by remember(mezzo.id) { mutableStateOf(mezzo.nome) }
     var targa by remember(mezzo.id) { mutableStateOf(mezzo.targa) }
+    var codiceArticoloKm by remember(mezzo.id) { mutableStateOf(mezzo.codiceArticoloKm) }
+    var codiceArticoloGiorni by remember(mezzo.id) { mutableStateOf(mezzo.codiceArticoloGiorni) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Modifica mezzo") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -265,12 +301,26 @@ fun EditMezzoDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                OutlinedTextField(
+                    value = codiceArticoloKm,
+                    onValueChange = { codiceArticoloKm = it.uppercase().take(20) },
+                    label = { Text("Codice Articolo Km") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = codiceArticoloGiorni,
+                    onValueChange = { codiceArticoloGiorni = it.uppercase().take(20) },
+                    label = { Text("Codice Articolo Giorni (opzionale)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             PrimaryButton(
-                onClick = { onConfirm(nome, targa) },
-                enabled = nome.isNotBlank() && targa.isNotBlank(),
+                onClick = { onConfirm(nome, targa, codiceArticoloKm, codiceArticoloGiorni) },
+                enabled = nome.isNotBlank() && targa.isNotBlank() && codiceArticoloKm.isNotBlank(),
                 content = { Text("Salva") }
             )
         },

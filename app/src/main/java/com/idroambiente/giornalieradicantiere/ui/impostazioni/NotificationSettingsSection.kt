@@ -184,6 +184,7 @@ fun NotificationSettingsSection(
 
         AlertDialog(
             onDismissRequest = { showTimePicker = false },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text("Seleziona orario") },
             text = {
                 TimePicker(state = timePickerState)

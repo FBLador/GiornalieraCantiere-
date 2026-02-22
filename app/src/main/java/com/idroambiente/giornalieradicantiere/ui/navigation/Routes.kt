@@ -9,6 +9,7 @@ object Routes {
     const val PERSONALE_LIST = "personale_list"
     const val MEZZO_LIST = "mezzo_list"
     const val ATTREZZATURA_LIST = "attrezzatura_list"
+    const val LISTE_GESTIONE = "liste_gestione"
     const val RIEPILOGO_COMMESSA = "riepilogo_commessa/{commessaId}"
 
     fun giornaliereList(commessaId: Long) = "giornaliere_list/$commessaId"

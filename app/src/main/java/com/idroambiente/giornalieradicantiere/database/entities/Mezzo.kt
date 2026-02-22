@@ -8,5 +8,7 @@ data class Mezzo(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val targa: String,
-    val nome: String
+    val nome: String,
+    val codiceArticoloKm: String = "",
+    val codiceArticoloGiorni: String = ""
 )

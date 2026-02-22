@@ -673,6 +673,7 @@ private fun TimePickerField(
 
         AlertDialog(
             onDismissRequest = { showDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text(label) },
             text = {
                 TimePicker(state = timePickerState)

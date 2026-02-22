@@ -50,11 +50,11 @@ class AttrezzaturaViewModel @Inject constructor(
         _attrezzaturaToEdit.value = null
     }
 
-    fun createAttrezzatura(nome: String) {
+    fun createAttrezzatura(nome: String, codiceArticolo: String) {
         viewModelScope.launch {
             _errorMessage.value = null
             val trimmedNome = nome.trim()
-            
+
             // Check for duplicate nome (case-insensitive)
             val existingAttrezzatura = attrezzaturaRepository.getByNome(trimmedNome)
             if (existingAttrezzatura != null) {
@@ -62,18 +62,21 @@ class AttrezzaturaViewModel @Inject constructor(
                 return@launch
             }
 
-            val attrezzatura = Attrezzatura(nome = trimmedNome)
+            val attrezzatura = Attrezzatura(
+                nome = trimmedNome,
+                codiceArticolo = codiceArticolo.uppercase().trim()
+            )
             attrezzaturaRepository.insert(attrezzatura)
             _showCreateDialog.value = false
         }
     }
 
-    fun updateAttrezzatura(nome: String) {
+    fun updateAttrezzatura(nome: String, codiceArticolo: String) {
         viewModelScope.launch {
             _errorMessage.value = null
             val current = _attrezzaturaToEdit.value ?: return@launch
             val trimmedNome = nome.trim()
-            
+
             // Check for duplicate nome (case-insensitive, excluding current)
             val existingAttrezzatura = attrezzaturaRepository.getByNome(trimmedNome)
             if (existingAttrezzatura != null && existingAttrezzatura.id != current.id) {
@@ -81,7 +84,12 @@ class AttrezzaturaViewModel @Inject constructor(
                 return@launch
             }
 
-            attrezzaturaRepository.update(current.copy(nome = trimmedNome))
+            attrezzaturaRepository.update(
+                current.copy(
+                    nome = trimmedNome,
+                    codiceArticolo = codiceArticolo.uppercase().trim()
+                )
+            )
             _attrezzaturaToEdit.value = null
         }
     }

@@ -7,5 +7,6 @@ import androidx.room.PrimaryKey
 data class Attrezzatura(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val nome: String
+    val nome: String,
+    val codiceArticolo: String = ""
 )

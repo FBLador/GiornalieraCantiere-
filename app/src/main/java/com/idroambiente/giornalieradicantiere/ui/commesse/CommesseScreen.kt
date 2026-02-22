@@ -150,6 +150,7 @@ fun CommesseScreen(
         errorMessage?.let { error ->
             AlertDialog(
                 onDismissRequest = { viewModel.clearError() },
+                containerColor = MaterialTheme.colorScheme.surface,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Warning,
@@ -275,6 +276,7 @@ fun CreateCommessaDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Nuova Commessa") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -217,6 +217,7 @@ private fun ExportBehaviorDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Comportamento all'invio") },
         text = {
             Column(Modifier.selectableGroup()) {

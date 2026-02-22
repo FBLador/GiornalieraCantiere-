@@ -24,8 +24,8 @@ fun PrimaryButton(
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
-            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            disabledContentColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.38f)
         ),
         content = content
     )

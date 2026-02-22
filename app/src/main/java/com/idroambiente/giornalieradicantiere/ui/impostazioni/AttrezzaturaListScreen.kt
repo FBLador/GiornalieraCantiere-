@@ -106,8 +106,8 @@ fun AttrezzaturaListScreen(
 
         if (showCreateDialog) {
             CreateAttrezzaturaDialog(
-                onConfirm = { nome ->
-                    viewModel.createAttrezzatura(nome)
+                onConfirm = { nome, codiceArticolo ->
+                    viewModel.createAttrezzatura(nome, codiceArticolo)
                 },
                 onDismiss = { viewModel.hideCreateDialog() }
             )
@@ -116,7 +116,7 @@ fun AttrezzaturaListScreen(
         attrezzaturaToEdit?.let { attrezzatura ->
             EditAttrezzaturaDialog(
                 attrezzatura = attrezzatura,
-                onConfirm = { nome -> viewModel.updateAttrezzatura(nome) },
+                onConfirm = { nome, codiceArticolo -> viewModel.updateAttrezzatura(nome, codiceArticolo) },
                 onDismiss = { viewModel.hideEditDialog() }
             )
         }
@@ -125,6 +125,7 @@ fun AttrezzaturaListScreen(
         errorMessage?.let { error ->
             AlertDialog(
                 onDismissRequest = { viewModel.clearError() },
+                containerColor = MaterialTheme.colorScheme.surface,
                 icon = {
                     Icon(
                         imageVector = Icons.Default.Warning,
@@ -158,13 +159,23 @@ fun AttrezzaturaItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = attrezzatura.nome,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = attrezzatura.nome,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (attrezzatura.codiceArticolo.isNotBlank()) {
+                    Text(
+                        text = "Art. ${attrezzatura.codiceArticolo}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
                 IconButton(onClick = onEdit) {
                     Icon(
@@ -187,27 +198,38 @@ fun AttrezzaturaItem(
 
 @Composable
 fun CreateAttrezzaturaDialog(
-    onConfirm: (nome: String) -> Unit,
+    onConfirm: (nome: String, codiceArticolo: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var nome by remember { mutableStateOf("") }
+    var codiceArticolo by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Nuova Attrezzatura") },
         text = {
-            OutlinedTextField(
-                value = nome,
-                onValueChange = { nome = it.take(50) },
-                label = { Text("Nome") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = nome,
+                    onValueChange = { nome = it.take(50) },
+                    label = { Text("Nome") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = codiceArticolo,
+                    onValueChange = { codiceArticolo = it.uppercase().take(20) },
+                    label = { Text("Codice Articolo") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         },
         confirmButton = {
             PrimaryButton(
-                onClick = { onConfirm(nome) },
-                enabled = nome.isNotBlank(),
+                onClick = { onConfirm(nome, codiceArticolo) },
+                enabled = nome.isNotBlank() && codiceArticolo.isNotBlank(),
                 content = { Text("Crea") }
             )
         },
@@ -222,27 +244,38 @@ fun CreateAttrezzaturaDialog(
 @Composable
 fun EditAttrezzaturaDialog(
     attrezzatura: Attrezzatura,
-    onConfirm: (nome: String) -> Unit,
+    onConfirm: (nome: String, codiceArticolo: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var nome by remember(attrezzatura.id) { mutableStateOf(attrezzatura.nome) }
+    var codiceArticolo by remember(attrezzatura.id) { mutableStateOf(attrezzatura.codiceArticolo) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Modifica attrezzatura") },
         text = {
-            OutlinedTextField(
-                value = nome,
-                onValueChange = { nome = it.take(50) },
-                label = { Text("Nome") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = nome,
+                    onValueChange = { nome = it.take(50) },
+                    label = { Text("Nome") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = codiceArticolo,
+                    onValueChange = { codiceArticolo = it.uppercase().take(20) },
+                    label = { Text("Codice Articolo") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         },
         confirmButton = {
             PrimaryButton(
-                onClick = { onConfirm(nome) },
-                enabled = nome.isNotBlank(),
+                onClick = { onConfirm(nome, codiceArticolo) },
+                enabled = nome.isNotBlank() && codiceArticolo.isNotBlank(),
                 content = { Text("Salva") }
             )
         },

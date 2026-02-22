@@ -17,9 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,9 +49,7 @@ private enum class TestNotificationMode {
 @Composable
 fun ImpostazioniScreen(
     onNavigateBack: () -> Unit = {},
-    onNavigateToPersonaleList: () -> Unit = {},
-    onNavigateToMezzoList: () -> Unit = {},
-    onNavigateToAttrezzaturaList: () -> Unit = {},
+    onNavigateToListeGestione: () -> Unit = {},
     exportSettingsViewModel: ExportSettingsViewModel = hiltViewModel()
 ) {
     val exportSettingsState by exportSettingsViewModel.uiState.collectAsState()
@@ -120,6 +116,7 @@ fun ImpostazioniScreen(
     pendingModeChange?.let { newMode ->
         AlertDialog(
             onDismissRequest = { pendingModeChange = null },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = { Text("Cambiare modalita?") },
             text = {
                 Text(
@@ -161,58 +158,6 @@ fun ImpostazioniScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Sezione Dati
-            Text(
-                text = "Gestione Dati",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
-            ListItem(
-                headlineContent = { Text("Lista persone") },
-                leadingContent = {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                },
-                trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToPersonaleList() }
-            )
-            HorizontalDivider()
-
-            ListItem(
-                headlineContent = { Text("Lista mezzi") },
-                leadingContent = {
-                    Icon(Icons.Default.Build, contentDescription = null)
-                },
-                trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToMezzoList() }
-            )
-            HorizontalDivider()
-
-            ListItem(
-                headlineContent = { Text("Lista attrezzature") },
-                leadingContent = {
-                    Icon(Icons.Default.Settings, contentDescription = null)
-                },
-                trailingContent = {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToAttrezzaturaList() }
-            )
-            HorizontalDivider()
-
-            Spacer(modifier = Modifier.height(24.dp))
-
             NotificationSettingsSection(
                 isEnabled = exportSettingsState.dailyReminderEnabled,
                 hour = exportSettingsState.dailyReminderHour,
@@ -297,6 +242,35 @@ fun ImpostazioniScreen(
                     }
                 }
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Sezione Dati
+            Text(
+                text = "Gestione Dati",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            ListItem(
+                headlineContent = { Text("Gestione liste") },
+                supportingContent = { Text("Persone, mezzi, attrezzature") },
+                leadingContent = {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToListeGestione() }
+            )
+            HorizontalDivider()
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            CsvImportSection()
 
             Spacer(modifier = Modifier.height(24.dp))
 

@@ -356,6 +356,7 @@ private fun CreateFolderDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text("Nuova cartella") },
         text = {
             OutlinedTextField(
