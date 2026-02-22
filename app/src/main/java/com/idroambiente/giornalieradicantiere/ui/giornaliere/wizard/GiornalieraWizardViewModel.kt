@@ -25,6 +25,7 @@ import com.idroambiente.giornalieradicantiere.database.repository.MezzoRepositor
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleGiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleRepository
 import com.idroambiente.giornalieradicantiere.data.preferences.StorageMode
+import com.idroambiente.giornalieradicantiere.services.CsvGeneratorService
 import com.idroambiente.giornalieradicantiere.services.FileStorageService
 import com.idroambiente.giornalieradicantiere.services.GiornalieraPdfData
 import com.idroambiente.giornalieradicantiere.services.MezzoWithData
@@ -122,6 +123,7 @@ class GiornalieraWizardViewModel @Inject constructor(
     private val cantiereRepository: CantiereRepository,
     private val commessaRepository: CommessaRepository,
     private val pdfGeneratorService: PdfGeneratorService,
+    private val csvGeneratorService: CsvGeneratorService,
     private val fileStorageService: FileStorageService,
     private val preferencesRepository: PreferencesRepository,
     private val networkUtils: NetworkUtils
@@ -692,6 +694,13 @@ class GiornalieraWizardViewModel @Inject constructor(
             // 2. Genera PDF
             val pdfFile = pdfGeneratorService.generateGiornalieraPdf(pdfData)
 
+            // 2b. Genera CSV (best-effort, non bloccante)
+            val csvFile = try {
+                csvGeneratorService.generateGiornalieraCsv(pdfData)
+            } catch (_: Exception) {
+                null
+            }
+
             // 3. Salva/Condividi in base alle preferenze
             when (exportBehavior) {
                 ExportBehavior.SAVE -> {
@@ -699,6 +708,10 @@ class GiornalieraWizardViewModel @Inject constructor(
                     val saveResult = fileStorageService.savePdf(pdfFile, commessaNome, giornalieraData)
                     when (saveResult) {
                         is SaveResult.Success -> {
+                            // Salva anche il CSV (best-effort)
+                            if (csvFile != null) {
+                                try { fileStorageService.saveCsv(csvFile, commessaNome, giornalieraData) } catch (_: Exception) {}
+                            }
                             // Aggiorna stato a INVIATA solo dopo salvataggio riuscito
                             markAsInviata(giornaliera)
                             _uiState.update {
@@ -719,6 +732,10 @@ class GiornalieraWizardViewModel @Inject constructor(
                             val localResult = fileStorageService.savePdfToAppStorage(pdfFile)
                             when (localResult) {
                                 is SaveResult.Success -> {
+                                    // Salva anche CSV nel fallback (best-effort)
+                                    if (csvFile != null) {
+                                        try { fileStorageService.saveCsvToAppStorage(csvFile) } catch (_: Exception) {}
+                                    }
                                     markAsInviata(giornaliera)
                                     _uiState.update {
                                         it.copy(
@@ -745,6 +762,10 @@ class GiornalieraWizardViewModel @Inject constructor(
                     }
                 }
                 ExportBehavior.SHARE -> {
+                    // Share rimane solo PDF, ma salva CSV se possibile
+                    if (csvFile != null) {
+                        try { fileStorageService.saveCsvToAppStorage(csvFile) } catch (_: Exception) {}
+                    }
                     val shareIntent = fileStorageService.createShareChooserIntent(pdfFile)
                     _uiState.update {
                         it.copy(
@@ -766,6 +787,10 @@ class GiornalieraWizardViewModel @Inject constructor(
 
                     when (saveResult) {
                         is SaveResult.Success -> {
+                            // Salva anche il CSV (best-effort)
+                            if (csvFile != null) {
+                                try { fileStorageService.saveCsv(csvFile, commessaNome, giornalieraData) } catch (_: Exception) {}
+                            }
                             markAsInviata(giornaliera)
                             _uiState.update {
                                 it.copy(

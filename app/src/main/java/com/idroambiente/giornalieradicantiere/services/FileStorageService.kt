@@ -40,6 +40,7 @@ class FileStorageService @Inject constructor(
 ) {
     companion object {
         private const val PDF_MIME_TYPE = "application/pdf"
+        private const val CSV_MIME_TYPE = "text/csv"
     }
 
     /**
@@ -213,6 +214,184 @@ class FileStorageService @Inject constructor(
                 }
                 savePdfToConfiguredFolder(renamedFile)
             }
+        }
+    }
+
+    /**
+     * Genera il nome file CSV usando la naming convention: {CommessaNome}_{YYYY-MM-DD}.csv
+     */
+    fun generateCsvFileName(commessaNome: String, data: Long): String {
+        val sanitizedNome = commessaNome
+            .replace(Regex("[\\\\/:*?\"<>|]"), "")
+            .replace(Regex("\\s+"), "_")
+            .trim()
+            .take(50)
+            .ifEmpty { "Commessa" }
+        val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.ITALY).format(Date(data))
+        return "${sanitizedNome}_${dateStr}.csv"
+    }
+
+    /**
+     * Salva il CSV in base alla modalità configurata (Google Drive o Locale)
+     */
+    suspend fun saveCsv(
+        csvFile: File,
+        commessaNome: String,
+        giornalieraData: Long
+    ): SaveResult = withContext(Dispatchers.IO) {
+        val mode = preferencesRepository.storageMode.first()
+
+        when (mode) {
+            StorageMode.GOOGLE_DRIVE -> {
+                val rootFolderId = preferencesRepository.googleDriveRootFolderId.first()
+
+                if (rootFolderId.isNullOrEmpty()) {
+                    return@withContext SaveResult.Error("Cartella Google Drive non configurata")
+                }
+
+                val result = googleDriveService.uploadCsvForCommessa(
+                    csvFile = csvFile,
+                    commessaNome = commessaNome,
+                    data = giornalieraData,
+                    rootFolderId = rootFolderId
+                )
+
+                result.fold(
+                    onSuccess = { uploadResult ->
+                        csvFile.delete()
+                        SaveResult.Success(
+                            uri = null,
+                            fileName = uploadResult.fileName,
+                            folderName = uploadResult.folderName,
+                            webViewLink = uploadResult.webViewLink
+                        )
+                    },
+                    onFailure = { error ->
+                        SaveResult.Error(error.message ?: "Errore durante l'upload CSV su Google Drive")
+                    }
+                )
+            }
+            StorageMode.LOCAL -> {
+                val newFileName = generateCsvFileName(commessaNome, giornalieraData)
+                val renamedFile = File(csvFile.parent, newFileName)
+
+                if (csvFile.name != newFileName) {
+                    csvFile.renameTo(renamedFile)
+                }
+
+                saveCsvToConfiguredFolder(renamedFile)
+            }
+        }
+    }
+
+    /**
+     * Salva il CSV nella cartella configurata via SAF
+     */
+    suspend fun saveCsvToConfiguredFolder(csvFile: File): SaveResult = withContext(Dispatchers.IO) {
+        try {
+            val folderUriString = preferencesRepository.exportFolderUri.first()
+
+            if (folderUriString.isNullOrEmpty()) {
+                return@withContext SaveResult.Error("Nessuna cartella di esportazione configurata")
+            }
+
+            val folderUri = Uri.parse(folderUriString)
+            val documentFile = DocumentFile.fromTreeUri(context, folderUri)
+
+            if (documentFile == null || !documentFile.canWrite()) {
+                return@withContext SaveResult.Error("Impossibile scrivere nella cartella selezionata")
+            }
+
+            val newFile = documentFile.createFile(CSV_MIME_TYPE, csvFile.nameWithoutExtension)
+
+            if (newFile == null) {
+                return@withContext SaveResult.Error("Impossibile creare il file CSV nella cartella")
+            }
+
+            context.contentResolver.openOutputStream(newFile.uri)?.use { outputStream ->
+                csvFile.inputStream().use { inputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            } ?: return@withContext SaveResult.Error("Impossibile aprire il file CSV per la scrittura")
+
+            csvFile.delete()
+
+            SaveResult.Success(uri = newFile.uri, fileName = newFile.name ?: csvFile.name)
+        } catch (e: SecurityException) {
+            SaveResult.Error("Permessi insufficienti per scrivere nella cartella")
+        } catch (e: Exception) {
+            SaveResult.Error("Errore durante il salvataggio CSV: ${e.message}")
+        }
+    }
+
+    /**
+     * Salva il CSV riepilogo in base alla modalità configurata (Google Drive o Locale)
+     */
+    suspend fun saveRiepilogoCsv(
+        csvFile: File,
+        commessaNome: String,
+        fileName: String
+    ): SaveResult = withContext(Dispatchers.IO) {
+        val mode = preferencesRepository.storageMode.first()
+
+        when (mode) {
+            StorageMode.GOOGLE_DRIVE -> {
+                val rootFolderId = preferencesRepository.googleDriveRootFolderId.first()
+
+                if (rootFolderId.isNullOrEmpty()) {
+                    return@withContext SaveResult.Error("Cartella Google Drive non configurata")
+                }
+
+                val result = googleDriveService.uploadRiepilogoCsvForCommessa(
+                    csvFile = csvFile,
+                    commessaNome = commessaNome,
+                    fileName = fileName,
+                    rootFolderId = rootFolderId
+                )
+
+                result.fold(
+                    onSuccess = { uploadResult ->
+                        csvFile.delete()
+                        SaveResult.Success(
+                            uri = null,
+                            fileName = uploadResult.fileName,
+                            folderName = uploadResult.folderName,
+                            webViewLink = uploadResult.webViewLink
+                        )
+                    },
+                    onFailure = { error ->
+                        SaveResult.Error(error.message ?: "Errore durante l'upload CSV su Google Drive")
+                    }
+                )
+            }
+            StorageMode.LOCAL -> {
+                val renamedFile = File(csvFile.parent, fileName)
+                if (csvFile.name != fileName) {
+                    csvFile.renameTo(renamedFile)
+                }
+                saveCsvToConfiguredFolder(renamedFile)
+            }
+        }
+    }
+
+    /**
+     * Salva il CSV nella cartella dell'app come fallback
+     */
+    suspend fun saveCsvToAppStorage(csvFile: File): SaveResult = withContext(Dispatchers.IO) {
+        try {
+            val appDir = File(context.getExternalFilesDir(null), "exports")
+            if (!appDir.exists()) {
+                appDir.mkdirs()
+            }
+
+            val destFile = File(appDir, csvFile.name)
+            csvFile.copyTo(destFile, overwrite = true)
+
+            csvFile.delete()
+
+            SaveResult.Success(uri = null, fileName = destFile.name)
+        } catch (e: Exception) {
+            SaveResult.Error("Errore durante il salvataggio CSV locale: ${e.message}")
         }
     }
 

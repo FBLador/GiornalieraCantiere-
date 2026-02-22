@@ -51,6 +51,7 @@ class GoogleDriveService @Inject constructor(
     companion object {
         private const val MIME_TYPE_FOLDER = "application/vnd.google-apps.folder"
         private const val MIME_TYPE_PDF = "application/pdf"
+        private const val MIME_TYPE_CSV = "text/csv"
         private const val APP_NAME = "GiornalieraCantiere"
     }
 
@@ -385,6 +386,96 @@ class GoogleDriveService @Inject constructor(
                 Result.failure(Exception("Errore di rete. Verifica la connessione e riprova.", e))
             } catch (e: java.io.IOException) {
                 Result.failure(Exception("Errore di rete. Riprova.", e))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Uploads a CSV file for a giornaliera, organizing it by commessa.
+     * Same folder structure as uploadPdfForCommessa: Root/Commessa/Giornaliere/
+     */
+    suspend fun uploadCsvForCommessa(
+        csvFile: File,
+        commessaNome: String,
+        data: Long,
+        rootFolderId: String
+    ): Result<UploadResult> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                val commessaFolderId = getOrCreateCommessaFolder(commessaNome, rootFolderId)
+                    .getOrElse { return@withContext Result.failure(it) }
+
+                val giornaliereFolderId = getOrCreateSubfolder("Giornaliere", commessaFolderId)
+                    .getOrElse { return@withContext Result.failure(it) }
+
+                val fileMetadata = DriveFile().apply {
+                    name = csvFile.name
+                    parents = listOf(giornaliereFolderId)
+                }
+
+                val mediaContent = FileContent(MIME_TYPE_CSV, csvFile)
+                val uploadedFile = driveService.files().create(fileMetadata, mediaContent)
+                    .setFields("id, name, webViewLink")
+                    .execute()
+
+                Result.success(
+                    UploadResult(
+                        fileId = uploadedFile.id,
+                        fileName = uploadedFile.name,
+                        folderName = sanitizeFolderName(commessaNome),
+                        webViewLink = uploadedFile.webViewLink
+                    )
+                )
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Uploads a riepilogo CSV for a commessa into the Riepiloghi subfolder.
+     * Same folder structure as uploadRiepilogoPdfForCommessa: Root/Commessa/Riepiloghi/
+     */
+    suspend fun uploadRiepilogoCsvForCommessa(
+        csvFile: File,
+        commessaNome: String,
+        fileName: String,
+        rootFolderId: String
+    ): Result<UploadResult> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                val commessaFolderId = getOrCreateCommessaFolder(commessaNome, rootFolderId)
+                    .getOrElse { return@withContext Result.failure(it) }
+
+                val riepiloghiFolderId = getOrCreateSubfolder("Riepiloghi", commessaFolderId)
+                    .getOrElse { return@withContext Result.failure(it) }
+
+                val fileMetadata = DriveFile().apply {
+                    name = fileName
+                    parents = listOf(riepiloghiFolderId)
+                }
+
+                val mediaContent = FileContent(MIME_TYPE_CSV, csvFile)
+                val uploadedFile = driveService.files().create(fileMetadata, mediaContent)
+                    .setFields("id, name, webViewLink")
+                    .execute()
+
+                Result.success(
+                    UploadResult(
+                        fileId = uploadedFile.id,
+                        fileName = uploadedFile.name,
+                        folderName = sanitizeFolderName(commessaNome),
+                        webViewLink = uploadedFile.webViewLink
+                    )
+                )
             } catch (e: Exception) {
                 Result.failure(e)
             }

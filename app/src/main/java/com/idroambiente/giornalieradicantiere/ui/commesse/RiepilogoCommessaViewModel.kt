@@ -12,6 +12,7 @@ import com.idroambiente.giornalieradicantiere.database.repository.CommessaReposi
 import com.idroambiente.giornalieradicantiere.database.repository.GiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.MezzoGiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleGiornalieraRepository
+import com.idroambiente.giornalieradicantiere.services.CsvGeneratorService
 import com.idroambiente.giornalieradicantiere.services.FileStorageService
 import com.idroambiente.giornalieradicantiere.services.NetworkUtils
 import com.idroambiente.giornalieradicantiere.services.PdfGeneratorService
@@ -53,6 +54,7 @@ class RiepilogoCommessaViewModel @Inject constructor(
     private val personaleGiornalieraRepository: PersonaleGiornalieraRepository,
     private val mezzoGiornalieraRepository: MezzoGiornalieraRepository,
     private val pdfGeneratorService: PdfGeneratorService,
+    private val csvGeneratorService: CsvGeneratorService,
     private val fileStorageService: FileStorageService,
     private val preferencesRepository: PreferencesRepository,
     private val networkUtils: NetworkUtils
@@ -211,11 +213,31 @@ class RiepilogoCommessaViewModel @Inject constructor(
                     currentEndDate
                 )
 
+                // Generate CSV (best-effort, non bloccante)
+                val csvFile = try {
+                    csvGeneratorService.generateRiepilogoCommessaCsv(pdfData)
+                } catch (_: Exception) {
+                    null
+                }
+                val csvFileName = try {
+                    csvGeneratorService.generateRiepilogoFileName(
+                        commessaNome.replace(Regex("[^a-zA-Z0-9\\-]"), "_"),
+                        currentStartDate,
+                        currentEndDate
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+
                 // Save
                 val saveResult = fileStorageService.saveRiepilogoPdf(pdfFile, commessaNome, fileName)
 
                 when (saveResult) {
                     is SaveResult.Success -> {
+                        // Salva anche il CSV (best-effort)
+                        if (csvFile != null && csvFileName != null) {
+                            try { fileStorageService.saveRiepilogoCsv(csvFile, commessaNome, csvFileName) } catch (_: Exception) {}
+                        }
                         _pdfExporting.value = false
                         _pdfExportSuccess.value = PdfExportResult(
                             fileName = saveResult.fileName,
@@ -227,6 +249,10 @@ class RiepilogoCommessaViewModel @Inject constructor(
                         // Fallback: save to app storage
                         val pdfFileFallback = pdfGeneratorService.generateRiepilogoCommessaPdf(pdfData)
                         val localResult = fileStorageService.savePdfToAppStorage(pdfFileFallback)
+                        // Salva anche CSV nel fallback (best-effort)
+                        if (csvFile != null) {
+                            try { fileStorageService.saveCsvToAppStorage(csvFile) } catch (_: Exception) {}
+                        }
                         _pdfExporting.value = false
                         when (localResult) {
                             is SaveResult.Success -> {
