@@ -250,7 +250,7 @@ fun StatoChip(stato: StatoCommessa) {
 
 @Composable
 fun CreateCommessaDialog(
-    onConfirm: (codice: String, cliente: String) -> Unit,
+    onConfirm: (codice: Int, cliente: String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var codiceParte1 by remember { mutableStateOf("") }  // prime 4 cifre
@@ -339,7 +339,7 @@ fun CreateCommessaDialog(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             if (codiceParte1.length == 4 && codiceParte2.length == 3 && cliente.isNotBlank()) {
-                                onConfirm(codiceParte1 + codiceParte2, cliente)
+                                onConfirm((codiceParte1 + codiceParte2).toInt(), cliente)
                             }
                         }
                     ),
@@ -351,7 +351,7 @@ fun CreateCommessaDialog(
         },
         confirmButton = {
             PrimaryButton(
-                onClick = { onConfirm(codiceParte1 + codiceParte2, cliente) },
+                onClick = { onConfirm((codiceParte1 + codiceParte2).toInt(), cliente) },
                 enabled = codiceParte1.length == 4 && codiceParte2.length == 3 && cliente.isNotBlank(),
                 content = { Text("Crea") }
             )

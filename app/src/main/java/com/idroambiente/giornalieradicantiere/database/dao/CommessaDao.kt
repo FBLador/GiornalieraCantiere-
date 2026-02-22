@@ -21,11 +21,11 @@ interface CommessaDao {
     @Query("SELECT * FROM commessa WHERE stato = :stato ORDER BY id DESC")
     fun getByStato(stato: StatoCommessa): Flow<List<Commessa>>
 
-    @Query("SELECT * FROM commessa WHERE nome LIKE '%' || :query || '%' OR cliente LIKE '%' || :query || '%' ORDER BY id DESC")
+    @Query("SELECT * FROM commessa WHERE CAST(nome AS TEXT) LIKE '%' || :query || '%' OR cliente LIKE '%' || :query || '%' ORDER BY id DESC")
     fun search(query: String): Flow<List<Commessa>>
 
     @Query("SELECT * FROM commessa WHERE nome = :nome")
-    suspend fun getByNome(nome: String): Commessa?
+    suspend fun getByNome(nome: Int): Commessa?
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(commessa: Commessa): Long

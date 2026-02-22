@@ -79,7 +79,7 @@ class GiornaliereViewModel @Inject constructor(
                 } else if (commessa != null) {
                     val cantiere = Cantiere(
                         commessaId = commessaId,
-                        nome = commessa.nome,
+                        nome = commessa.nome.toString().padStart(7, '0'),
                         indirizzo = commessa.indirizzo
                     )
                     val newCantiereId = cantiereRepository.insert(cantiere)

@@ -184,7 +184,7 @@ class RiepilogoCommessaViewModel @Inject constructor(
 
                 // Build PDF data
                 val pdfData = RiepilogoCommessaPdfData(
-                    commessaNome = commessa.nome,
+                    commessaNome = commessa.nome.toString().padStart(7, '0'),
                     cliente = commessa.cliente,
                     indirizzo = commessa.indirizzo,
                     stato = commessa.stato.name,

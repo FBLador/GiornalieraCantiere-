@@ -51,7 +51,7 @@ class CommesseViewModel @Inject constructor(
         _showCreateDialog.value = false
     }
 
-    fun createCommessa(nome: String, cliente: String, indirizzo: String) {
+    fun createCommessa(nome: Int, cliente: String, indirizzo: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -76,7 +76,7 @@ class CommesseViewModel @Inject constructor(
 
                 val cantiere = Cantiere(
                     commessaId = commessaId,
-                    nome = nome,
+                    nome = nome.toString().padStart(7, '0'),
                     indirizzo = indirizzo
                 )
                 val cantiereId = cantiereRepository.insert(cantiere)

@@ -26,5 +26,5 @@ class CommessaRepository(private val commessaDao: CommessaDao) {
 
     suspend fun deleteAll() = commessaDao.deleteAll()
 
-    suspend fun getByNome(nome: String): Commessa? = commessaDao.getByNome(nome)
+    suspend fun getByNome(nome: Int): Commessa? = commessaDao.getByNome(nome)
 }
