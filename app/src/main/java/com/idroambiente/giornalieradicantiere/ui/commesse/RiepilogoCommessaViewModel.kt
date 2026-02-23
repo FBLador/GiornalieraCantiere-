@@ -9,13 +9,21 @@ import com.idroambiente.giornalieradicantiere.database.entities.Commessa
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
 import com.idroambiente.giornalieradicantiere.database.repository.CantiereRepository
 import com.idroambiente.giornalieradicantiere.database.repository.CommessaRepository
+import com.idroambiente.giornalieradicantiere.database.repository.AttrezzaturaGiornalieraRepository
+import com.idroambiente.giornalieradicantiere.database.repository.AttrezzaturaRepository
 import com.idroambiente.giornalieradicantiere.database.repository.GiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.MezzoGiornalieraRepository
+import com.idroambiente.giornalieradicantiere.database.repository.MezzoRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleGiornalieraRepository
+import com.idroambiente.giornalieradicantiere.services.AttrezzaturaCsvData
+import com.idroambiente.giornalieradicantiere.services.AttrezzaturaRiepilogoItem
 import com.idroambiente.giornalieradicantiere.services.CsvGeneratorService
 import com.idroambiente.giornalieradicantiere.services.FileStorageService
+import com.idroambiente.giornalieradicantiere.services.MezzoCsvData
+import com.idroambiente.giornalieradicantiere.services.MezzoRiepilogoItem
 import com.idroambiente.giornalieradicantiere.services.NetworkUtils
 import com.idroambiente.giornalieradicantiere.services.PdfGeneratorService
+import com.idroambiente.giornalieradicantiere.services.RiepilogoCommessaCsvData
 import com.idroambiente.giornalieradicantiere.services.RiepilogoCommessaPdfData
 import com.idroambiente.giornalieradicantiere.services.RiepilogoGiornalieraItem
 import com.idroambiente.giornalieradicantiere.services.SaveResult
@@ -53,6 +61,9 @@ class RiepilogoCommessaViewModel @Inject constructor(
     private val giornalieraRepository: GiornalieraRepository,
     private val personaleGiornalieraRepository: PersonaleGiornalieraRepository,
     private val mezzoGiornalieraRepository: MezzoGiornalieraRepository,
+    private val mezzoRepository: MezzoRepository,
+    private val attrezzaturaRepository: AttrezzaturaRepository,
+    private val attrezzaturaGiornalieraRepository: AttrezzaturaGiornalieraRepository,
     private val pdfGeneratorService: PdfGeneratorService,
     private val csvGeneratorService: CsvGeneratorService,
     private val fileStorageService: FileStorageService,
@@ -184,6 +195,53 @@ class RiepilogoCommessaViewModel @Inject constructor(
                 val currentStartDate = _startDate.value
                 val currentEndDate = _endDate.value
 
+                // Aggregare dettaglio mezzi: mezzoId -> (Set<giornalieraId>, sommaKm)
+                val mezzoAggregation = mutableMapOf<Long, Pair<MutableSet<Long>, Float>>()
+                // Aggregare dettaglio attrezzature: attrezzaturaId -> Set<giornalieraId>
+                val attrezzaturaAggregation = mutableMapOf<Long, MutableSet<Long>>()
+
+                for (g in currentGiornaliere) {
+                    val mezziGiornaliera = mezzoGiornalieraRepository.getByGiornalieraId(g.id).first()
+                    for (mg in mezziGiornaliera) {
+                        val (giorni, kmPrecedenti) = mezzoAggregation.getOrPut(mg.mezzoId) { mutableSetOf<Long>() to 0f }
+                        giorni.add(g.id)
+                        mezzoAggregation[mg.mezzoId] = giorni to (kmPrecedenti + mg.kmAndata + mg.kmRitorno)
+                    }
+
+                    val attrezzatureGiornaliera = attrezzaturaGiornalieraRepository.getByGiornalieraId(g.id).first()
+                    for (ag in attrezzatureGiornaliera) {
+                        attrezzaturaAggregation.getOrPut(ag.attrezzaturaId) { mutableSetOf() }.add(g.id)
+                    }
+                }
+
+                // Risolvere entità Mezzo
+                val mezziDettaglio = if (mezzoAggregation.isNotEmpty()) {
+                    val mezziEntities = mezzoRepository.getByIds(mezzoAggregation.keys.toList())
+                    mezziEntities.map { mezzo ->
+                        val entry = mezzoAggregation[mezzo.id]
+                        MezzoRiepilogoItem(
+                            nome = mezzo.nome,
+                            targa = mezzo.targa,
+                            codiceArticoloGiorni = mezzo.codiceArticoloGiorni,
+                            giorniUtilizzo = entry?.first?.size ?: 0,
+                            codiceArticoloKm = mezzo.codiceArticoloKm,
+                            totaleKm = entry?.second ?: 0f
+                        )
+                    }
+                } else emptyList()
+
+                // Risolvere entità Attrezzatura
+                val attrezzatureDettaglio = if (attrezzaturaAggregation.isNotEmpty()) {
+                    val attrEntities = attrezzaturaRepository.getByIds(attrezzaturaAggregation.keys.toList())
+                    attrEntities.map { attr ->
+                        AttrezzaturaRiepilogoItem(
+                            nome = attr.nome,
+                            codiceArticolo = attr.codiceArticolo,
+                            giorniUtilizzo = attrezzaturaAggregation[attr.id]?.size ?: 0
+                        )
+                    }
+                } else emptyList()
+
                 // Build PDF data
                 val pdfData = RiepilogoCommessaPdfData(
                     commessaNome = commessa.nome.toString().padStart(7, '0'),
@@ -197,6 +255,36 @@ class RiepilogoCommessaViewModel @Inject constructor(
                         RiepilogoGiornalieraItem(
                             data = g.data,
                             stato = g.stato.name
+                        )
+                    },
+                    startDate = currentStartDate,
+                    endDate = currentEndDate,
+                    mezziDettaglio = mezziDettaglio,
+                    attrezzatureDettaglio = attrezzatureDettaglio
+                )
+
+                // Build CSV data
+                val codiceOreLavoro = preferencesRepository.codiceArticoloOreLavoro.first()
+                val codiceOreViaggio = preferencesRepository.codiceArticoloOreViaggio.first()
+
+                val csvData = RiepilogoCommessaCsvData(
+                    commessaNome = commessa.nome.toString().padStart(7, '0'),
+                    totaleOreLavoro = currentRiepilogo.totaleOreLavoro,
+                    totaleOreViaggio = currentRiepilogo.totaleOreViaggio,
+                    codiceArticoloOreLavoro = codiceOreLavoro,
+                    codiceArticoloOreViaggio = codiceOreViaggio,
+                    mezzi = mezziDettaglio.map { m ->
+                        MezzoCsvData(
+                            codiceArticoloGiorni = m.codiceArticoloGiorni,
+                            giorniUtilizzo = m.giorniUtilizzo,
+                            codiceArticoloKm = m.codiceArticoloKm,
+                            totaleKm = m.totaleKm
+                        )
+                    },
+                    attrezzature = attrezzatureDettaglio.map { a ->
+                        AttrezzaturaCsvData(
+                            codiceArticolo = a.codiceArticolo,
+                            giorniUtilizzo = a.giorniUtilizzo
                         )
                     },
                     startDate = currentStartDate,
@@ -215,7 +303,7 @@ class RiepilogoCommessaViewModel @Inject constructor(
 
                 // Generate CSV (best-effort, non bloccante)
                 val csvFile = try {
-                    csvGeneratorService.generateRiepilogoCommessaCsv(pdfData)
+                    csvGeneratorService.generateRiepilogoCommessaCsv(csvData)
                 } catch (_: Exception) {
                     null
                 }

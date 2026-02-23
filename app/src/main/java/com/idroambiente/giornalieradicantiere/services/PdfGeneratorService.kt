@@ -64,6 +64,27 @@ data class RiepilogoGiornalieraItem(
 )
 
 /**
+ * Dettaglio mezzo aggregato per il riepilogo commessa (PDF e CSV)
+ */
+data class MezzoRiepilogoItem(
+    val nome: String,
+    val targa: String,
+    val codiceArticoloGiorni: String,
+    val giorniUtilizzo: Int,
+    val codiceArticoloKm: String,
+    val totaleKm: Float
+)
+
+/**
+ * Dettaglio attrezzatura aggregato per il riepilogo commessa (PDF e CSV)
+ */
+data class AttrezzaturaRiepilogoItem(
+    val nome: String,
+    val codiceArticolo: String,
+    val giorniUtilizzo: Int
+)
+
+/**
  * Dati necessari per generare il PDF del riepilogo commessa
  */
 data class RiepilogoCommessaPdfData(
@@ -76,7 +97,9 @@ data class RiepilogoCommessaPdfData(
     val totaleKm: Float,
     val giornaliere: List<RiepilogoGiornalieraItem>,
     val startDate: Long? = null,
-    val endDate: Long? = null
+    val endDate: Long? = null,
+    val mezziDettaglio: List<MezzoRiepilogoItem> = emptyList(),
+    val attrezzatureDettaglio: List<AttrezzaturaRiepilogoItem> = emptyList()
 )
 
 /**
@@ -593,6 +616,20 @@ class PdfGeneratorService @Inject constructor(
         state.yPosition = drawRiepilogoTotali(state.canvas!!, data, state.yPosition)
         state.yPosition += SECTION_SPACING
 
+        // Dettaglio Mezzi
+        if (data.mezziDettaglio.isNotEmpty()) {
+            state.checkNewPage(80f)
+            state.yPosition = drawRiepilogoMezziTable(state, data.mezziDettaglio, state.yPosition)
+            state.yPosition += SECTION_SPACING
+        }
+
+        // Dettaglio Attrezzature
+        if (data.attrezzatureDettaglio.isNotEmpty()) {
+            state.checkNewPage(80f)
+            state.yPosition = drawRiepilogoAttrezzatureTable(state, data.attrezzatureDettaglio, state.yPosition)
+            state.yPosition += SECTION_SPACING
+        }
+
         // Tabella Giornaliere
         state.checkNewPage(80f)
         state.yPosition = drawRiepilogoGiornaliereTable(state, data.giornaliere, state.yPosition)
@@ -710,6 +747,90 @@ class PdfGeneratorService @Inject constructor(
         canvas.drawText("Totale giornaliere: ${data.giornaliere.size}", col1X, y, textPaint)
 
         return startY + 25f + boxHeight + 10f
+    }
+
+    private fun drawRiepilogoMezziTable(
+        state: PdfState,
+        mezzi: List<MezzoRiepilogoItem>,
+        startY: Float
+    ): Float {
+        var y = startY
+
+        state.canvas!!.drawText("DETTAGLIO MEZZI", MARGIN, y + 14f, headerPaint)
+        y += 25f
+
+        // Header tabella
+        val colWidths = floatArrayOf(160f, 120f, 100f, 100f)
+        val headers = arrayOf("Nome", "Targa", "Giorni Utilizzo", "KM Totali")
+
+        state.canvas!!.drawRect(MARGIN, y, MARGIN + colWidths.sum(), y + 20f, tableHeaderBgPaint)
+
+        var x = MARGIN + 5f
+        headers.forEachIndexed { index, header ->
+            state.canvas!!.drawText(header, x, y + 14f, smallTextPaint)
+            x += colWidths[index]
+        }
+        y += 22f
+
+        // Righe
+        mezzi.forEach { item ->
+            state.yPosition = y
+            state.checkNewPage(25f)
+            y = state.yPosition
+
+            x = MARGIN + 5f
+            val nomeHeight = drawWrappedText(state.canvas!!, item.nome, x, y, colWidths[0] - 10f, textPaint)
+            x += colWidths[0]
+            state.canvas!!.drawText(item.targa, x, y + 11f, textPaint)
+            x += colWidths[1]
+            state.canvas!!.drawText(item.giorniUtilizzo.toString(), x, y + 11f, textPaint)
+            x += colWidths[2]
+            state.canvas!!.drawText(formatKm(item.totaleKm), x, y + 11f, textPaint)
+
+            y += maxOf(LINE_HEIGHT, nomeHeight)
+        }
+
+        return y
+    }
+
+    private fun drawRiepilogoAttrezzatureTable(
+        state: PdfState,
+        attrezzature: List<AttrezzaturaRiepilogoItem>,
+        startY: Float
+    ): Float {
+        var y = startY
+
+        state.canvas!!.drawText("DETTAGLIO ATTREZZATURE", MARGIN, y + 14f, headerPaint)
+        y += 25f
+
+        // Header tabella
+        val colWidths = floatArrayOf(300f, 100f)
+        val headers = arrayOf("Nome", "Giorni Utilizzo")
+
+        state.canvas!!.drawRect(MARGIN, y, MARGIN + colWidths.sum(), y + 20f, tableHeaderBgPaint)
+
+        var x = MARGIN + 5f
+        headers.forEachIndexed { index, header ->
+            state.canvas!!.drawText(header, x, y + 14f, smallTextPaint)
+            x += colWidths[index]
+        }
+        y += 22f
+
+        // Righe
+        attrezzature.forEach { item ->
+            state.yPosition = y
+            state.checkNewPage(25f)
+            y = state.yPosition
+
+            x = MARGIN + 5f
+            val nomeHeight = drawWrappedText(state.canvas!!, item.nome, x, y, colWidths[0] - 10f, textPaint)
+            x += colWidths[0]
+            state.canvas!!.drawText(item.giorniUtilizzo.toString(), x, y + 11f, textPaint)
+
+            y += maxOf(LINE_HEIGHT, nomeHeight)
+        }
+
+        return y
     }
 
     private fun drawRiepilogoGiornaliereTable(

@@ -214,6 +214,28 @@ class PreferencesRepository @Inject constructor(
         }
     }
 
+    // ==================== Codici Articolo CSV ====================
+
+    val codiceArticoloOreLavoro: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.CODICE_ARTICOLO_ORE_LAVORO] ?: "IAPERSINT"
+    }
+
+    val codiceArticoloOreViaggio: Flow<String> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.CODICE_ARTICOLO_ORE_VIAGGIO] ?: "IAPERSVIAGGI"
+    }
+
+    suspend fun setCodiceArticoloOreLavoro(codice: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CODICE_ARTICOLO_ORE_LAVORO] = codice
+        }
+    }
+
+    suspend fun setCodiceArticoloOreViaggio(codice: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CODICE_ARTICOLO_ORE_VIAGGIO] = codice
+        }
+    }
+
     // ==================== Export Behavior ====================
     
     /**

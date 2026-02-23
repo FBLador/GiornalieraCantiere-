@@ -30,6 +30,10 @@ object PreferencesKeys {
     val DAILY_REMINDER_HOUR = intPreferencesKey("daily_reminder_hour")
     val DAILY_REMINDER_MINUTE = intPreferencesKey("daily_reminder_minute")
     val DAILY_REMINDER_DAYS = stringSetPreferencesKey("daily_reminder_days")
+
+    // Codici articolo per CSV riepilogo
+    val CODICE_ARTICOLO_ORE_LAVORO = stringPreferencesKey("codice_articolo_ore_lavoro")
+    val CODICE_ARTICOLO_ORE_VIAGGIO = stringPreferencesKey("codice_articolo_ore_viaggio")
 }
 
 /**

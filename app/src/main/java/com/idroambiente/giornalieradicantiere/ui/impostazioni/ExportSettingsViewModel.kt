@@ -28,7 +28,9 @@ data class ExportSettingsUiState(
     val dailyReminderMinute: Int = 0,
     val dailyReminderDays: Set<Int> = DEFAULT_REMINDER_DAYS,
     val isFolderAccessible: Boolean = true,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val codiceArticoloOreLavoro: String = "IAPERSINT",
+    val codiceArticoloOreViaggio: String = "IAPERSVIAGGI"
 )
 
 private data class StorageSettings(
@@ -79,15 +81,22 @@ class ExportSettingsViewModel @Inject constructor(
                 ReminderSettings(enabled, hour, minute, days)
             }
 
-            combine(storageFlow, reminderFlow) { storage, reminder ->
-                Pair(storage, reminder)
-            }.collect { (storage, reminder) ->
+            val codiciFlow = combine(
+                preferencesRepository.codiceArticoloOreLavoro,
+                preferencesRepository.codiceArticoloOreViaggio
+            ) { oreLavoro, oreViaggio ->
+                Pair(oreLavoro, oreViaggio)
+            }
+
+            combine(storageFlow, reminderFlow, codiciFlow) { storage, reminder, codici ->
+                Triple(storage, reminder, codici)
+            }.collect { (storage, reminder, codici) ->
                 val isAccessible = if (storage.uri != null) {
                     fileStorageService.isConfiguredFolderAccessible()
                 } else {
                     true
                 }
-                
+
                 _uiState.update {
                     it.copy(
                         storageMode = storage.mode,
@@ -99,7 +108,9 @@ class ExportSettingsViewModel @Inject constructor(
                         dailyReminderMinute = reminder.minute,
                         dailyReminderDays = reminder.days,
                         isFolderAccessible = isAccessible,
-                        isLoading = false
+                        isLoading = false,
+                        codiceArticoloOreLavoro = codici.first,
+                        codiceArticoloOreViaggio = codici.second
                     )
                 }
             }
@@ -170,5 +181,17 @@ class ExportSettingsViewModel @Inject constructor(
 
     fun scheduleTestReminder() {
         dailyReminderScheduler.scheduleTestReminder()
+    }
+
+    fun setCodiceArticoloOreLavoro(codice: String) {
+        viewModelScope.launch {
+            preferencesRepository.setCodiceArticoloOreLavoro(codice)
+        }
+    }
+
+    fun setCodiceArticoloOreViaggio(codice: String) {
+        viewModelScope.launch {
+            preferencesRepository.setCodiceArticoloOreViaggio(codice)
+        }
     }
 }

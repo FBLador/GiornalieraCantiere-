@@ -10,6 +10,33 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * Dati per generare il CSV riepilogo commessa nel formato gestionale
+ */
+data class RiepilogoCommessaCsvData(
+    val commessaNome: String,
+    val totaleOreLavoro: Float,
+    val totaleOreViaggio: Float,
+    val codiceArticoloOreLavoro: String,
+    val codiceArticoloOreViaggio: String,
+    val mezzi: List<MezzoCsvData>,
+    val attrezzature: List<AttrezzaturaCsvData>,
+    val startDate: Long? = null,
+    val endDate: Long? = null
+)
+
+data class MezzoCsvData(
+    val codiceArticoloGiorni: String,
+    val giorniUtilizzo: Int,
+    val codiceArticoloKm: String,
+    val totaleKm: Float
+)
+
+data class AttrezzaturaCsvData(
+    val codiceArticolo: String,
+    val giorniUtilizzo: Int
+)
+
 @Singleton
 class CsvGeneratorService @Inject constructor(
     @ApplicationContext private val context: Context
@@ -117,47 +144,60 @@ class CsvGeneratorService @Inject constructor(
     }
 
     /**
-     * Genera il CSV per il riepilogo commessa e lo salva nella cache dell'app.
-     * Due sezioni: riga riepilogo + lista giornaliere.
+     * Genera il CSV per il riepilogo commessa nel formato gestionale.
+     * Colonne: Data;Commessa;Codice Articolo;Quantita
      */
-    fun generateRiepilogoCommessaCsv(data: RiepilogoCommessaPdfData): File {
+    fun generateRiepilogoCommessaCsv(data: RiepilogoCommessaCsvData): File {
         val sb = StringBuilder()
         sb.append(BOM)
 
-        // Sezione 1: Riepilogo
-        sb.appendLine(
-            listOf(
-                "Commessa", "Cliente", "Indirizzo", "Stato",
-                "Totale Ore Lavoro", "Totale Ore Viaggio", "Totale KM", "Totale Giornaliere"
-            ).joinToString(SEPARATOR)
-        )
-        sb.appendLine(
-            listOf(
-                escapeCsv(formatCommessaNome(data.commessaNome)),
-                escapeCsv(data.cliente),
-                escapeCsv(data.indirizzo),
-                escapeCsv(data.stato),
-                formatDecimal(data.totaleOreLavoro),
-                formatDecimal(data.totaleOreViaggio),
-                formatDecimal(data.totaleKm),
-                data.giornaliere.size.toString()
-            ).joinToString(SEPARATOR)
-        )
-
-        // Riga vuota di separazione
-        sb.appendLine()
-
-        // Sezione 2: Lista giornaliere
-        sb.appendLine(listOf("Data", "Stato").joinToString(SEPARATOR))
-
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
-        for (item in data.giornaliere) {
+        val dataStr = dateFormat.format(Date())
+        val commessa = escapeCsv(formatCommessaNome(data.commessaNome))
+
+        // Header
+        sb.appendLine(listOf("Data", "Commessa", "Codice Articolo", "Quantita").joinToString(SEPARATOR))
+
+        // Riga ore lavorate totali
+        if (data.codiceArticoloOreLavoro.isNotBlank() && data.totaleOreLavoro > 0f) {
             sb.appendLine(
-                listOf(
-                    dateFormat.format(Date(item.data)),
-                    escapeCsv(item.stato)
-                ).joinToString(SEPARATOR)
+                listOf(dataStr, commessa, escapeCsv(data.codiceArticoloOreLavoro), formatDecimal(data.totaleOreLavoro))
+                    .joinToString(SEPARATOR)
             )
+        }
+
+        // Riga ore viaggio totali
+        if (data.codiceArticoloOreViaggio.isNotBlank() && data.totaleOreViaggio > 0f) {
+            sb.appendLine(
+                listOf(dataStr, commessa, escapeCsv(data.codiceArticoloOreViaggio), formatDecimal(data.totaleOreViaggio))
+                    .joinToString(SEPARATOR)
+            )
+        }
+
+        // Righe mezzi: giorni di utilizzo + km
+        for (mezzo in data.mezzi) {
+            if (mezzo.codiceArticoloGiorni.isNotBlank() && mezzo.giorniUtilizzo > 0) {
+                sb.appendLine(
+                    listOf(dataStr, commessa, escapeCsv(mezzo.codiceArticoloGiorni), mezzo.giorniUtilizzo.toString())
+                        .joinToString(SEPARATOR)
+                )
+            }
+            if (mezzo.codiceArticoloKm.isNotBlank() && mezzo.totaleKm > 0f) {
+                sb.appendLine(
+                    listOf(dataStr, commessa, escapeCsv(mezzo.codiceArticoloKm), formatDecimal(mezzo.totaleKm))
+                        .joinToString(SEPARATOR)
+                )
+            }
+        }
+
+        // Righe attrezzature: giorni di utilizzo
+        for (attr in data.attrezzature) {
+            if (attr.codiceArticolo.isNotBlank() && attr.giorniUtilizzo > 0) {
+                sb.appendLine(
+                    listOf(dataStr, commessa, escapeCsv(attr.codiceArticolo), attr.giorniUtilizzo.toString())
+                        .joinToString(SEPARATOR)
+                )
+            }
         }
 
         val sanitizedCommessa = formatCommessaNome(data.commessaNome)
