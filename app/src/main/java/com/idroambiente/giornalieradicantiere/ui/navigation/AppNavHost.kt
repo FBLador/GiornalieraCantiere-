@@ -43,6 +43,15 @@ fun AppNavHost(
 
     val startDestination = if (setupCompleted == true) Routes.COMMESSE_LIST else Routes.SETUP
 
+    fun safePopBackStack() {
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+        val isRoot = currentRoute == Routes.COMMESSE_LIST || currentRoute == Routes.SETUP
+        // Non chiamare popBackStack alla root - evita race dove BackHandler di schermata precedente
+        // è ancora attivo durante transizione; popBackStack() alla root può lasciare currentBackStackEntry null
+        if (isRoot) return
+        navController.popBackStack()
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -77,7 +86,7 @@ fun AppNavHost(
             arguments = listOf(navArgument("commessaId") { type = NavType.LongType })
         ) {
             GiornaliereScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { safePopBackStack() },
                 onNavigateToGiornaliera = { cantiereId, giornalieraId ->
                     navController.navigate(Routes.giornalieraWizard(cantiereId, giornalieraId))
                 },
@@ -95,7 +104,7 @@ fun AppNavHost(
             arguments = listOf(navArgument("commessaId") { type = NavType.LongType })
         ) {
             RiepilogoCommessaScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
@@ -110,13 +119,13 @@ fun AppNavHost(
             )
         ) {
             GiornalieraWizardScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
         composable(Routes.IMPOSTAZIONI) {
             ImpostazioniScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { safePopBackStack() },
                 onNavigateToListeGestione = {
                     navController.navigate(Routes.LISTE_GESTIONE)
                 }
@@ -125,25 +134,25 @@ fun AppNavHost(
 
         composable(Routes.LISTE_GESTIONE) {
             ListeGestioneScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
         composable(Routes.PERSONALE_LIST) {
             PersonaleListScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
         composable(Routes.MEZZO_LIST) {
             MezzoListScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
 
         composable(Routes.ATTREZZATURA_LIST) {
             AttrezzaturaListScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack() }
             )
         }
     }

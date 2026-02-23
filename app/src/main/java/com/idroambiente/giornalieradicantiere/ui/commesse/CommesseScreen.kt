@@ -1,5 +1,7 @@
 package com.idroambiente.giornalieradicantiere.ui.commesse
 
+import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +37,6 @@ import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
 import com.idroambiente.giornalieradicantiere.ui.components.PrimaryButton
 import com.idroambiente.giornalieradicantiere.ui.components.SecondaryButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +49,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.idroambiente.giornalieradicantiere.database.entities.Commessa
@@ -64,6 +66,11 @@ fun CommesseScreen(
     val commesse by viewModel.commesse.collectAsState()
     val showCreateDialog by viewModel.showCreateDialog.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val context = LocalContext.current
+
+    BackHandler {
+        (context as? Activity)?.finish()
+    }
 
     Scaffold(
         topBar = {

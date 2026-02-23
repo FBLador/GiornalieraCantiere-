@@ -86,6 +86,10 @@ fun GiornalieraWizardScreen(
     BackHandler(enabled = !isDetailMode || isEditMode) {
         showAnnullaConfirmDialog = true
     }
+    // System back in modalità dettaglio (solo lettura) deve fare pop, non finish activity
+    BackHandler(enabled = isDetailMode && !isEditMode) {
+        onNavigateBack()
+    }
 
     // Determine title based on mode
     val title = when {

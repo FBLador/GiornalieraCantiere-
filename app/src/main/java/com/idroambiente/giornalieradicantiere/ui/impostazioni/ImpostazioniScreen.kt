@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -143,6 +144,8 @@ fun ImpostazioniScreen(
             }
         )
     }
+
+    BackHandler { onNavigateBack() }
 
     Scaffold(
         topBar = {

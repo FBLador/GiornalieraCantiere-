@@ -2,6 +2,7 @@ package com.idroambiente.giornalieradicantiere.ui.commesse
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -85,6 +86,8 @@ fun RiepilogoCommessaScreen(
     var showEndDatePicker by remember { mutableStateOf(false) }
 
     val dateFormat = remember { SimpleDateFormat("dd/MM/yy", Locale.ITALY) }
+
+    BackHandler { onNavigateBack() }
 
     Scaffold(
         topBar = {

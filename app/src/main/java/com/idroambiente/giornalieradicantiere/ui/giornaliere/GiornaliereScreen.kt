@@ -1,5 +1,6 @@
 package com.idroambiente.giornalieradicantiere.ui.giornaliere
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,6 +54,10 @@ fun GiornaliereScreen(
     val giornaliere by viewModel.giornaliere.collectAsState()
     val cantiereId by viewModel.cantiereId.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+
+    // #region agent log - system back must pop, not finish activity
+    BackHandler { onNavigateBack() }
+    // #endregion
 
     Scaffold(
         topBar = {
