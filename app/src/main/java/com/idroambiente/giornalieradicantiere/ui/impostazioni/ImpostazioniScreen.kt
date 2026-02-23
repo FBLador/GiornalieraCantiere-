@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.idroambiente.giornalieradicantiere.BuildConfig
 import com.idroambiente.giornalieradicantiere.data.preferences.StorageMode
 import com.idroambiente.giornalieradicantiere.notifications.ReminderNotificationHelper
 import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
@@ -148,7 +149,15 @@ fun ImpostazioniScreen(
             AppTopBar(
                 title = "Impostazioni",
                 showBack = true,
-                onBackClick = onNavigateBack
+                onBackClick = onNavigateBack,
+                actions = {
+                    Text(
+                        text = "v${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(end = 16.dp)
+                    )
+                }
             )
         }
     ) { paddingValues ->

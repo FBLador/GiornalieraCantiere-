@@ -144,7 +144,7 @@ class CsvImportViewModel @Inject constructor(
         }
     }
 
-    fun confirmImport() {
+    fun confirmImport(replaceExisting: Boolean) {
         val currentState = _state.value
         if (currentState !is CsvImportState.Parsed) return
 
@@ -153,9 +153,11 @@ class CsvImportViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                personaleRepository.deleteAll()
-                mezzoRepository.deleteAll()
-                attrezzaturaRepository.deleteAll()
+                if (replaceExisting) {
+                    personaleRepository.deleteAll()
+                    mezzoRepository.deleteAll()
+                    attrezzaturaRepository.deleteAll()
+                }
 
                 if (result.personale.isNotEmpty()) {
                     personaleRepository.insertAll(result.personale)

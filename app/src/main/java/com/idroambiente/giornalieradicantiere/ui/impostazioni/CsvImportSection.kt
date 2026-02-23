@@ -27,6 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.material3.RadioButton
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -132,6 +136,7 @@ fun CsvImportSection(
     // Dialogo conferma importazione
     if (state is CsvImportState.Parsed) {
         val result = (state as CsvImportState.Parsed).result
+        val replaceExisting = remember { mutableStateOf(true) }
         AlertDialog(
             onDismissRequest = { viewModel.resetState() },
             containerColor = MaterialTheme.colorScheme.surface,
@@ -144,12 +149,43 @@ fun CsvImportSection(
                         "- ${result.mezzi.size} mezzi\n" +
                         "- ${result.attrezzature.size} attrezzature"
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "I dati esistenti verranno sostituiti.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = replaceExisting.value,
+                                onClick = { replaceExisting.value = true }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = replaceExisting.value,
+                            onClick = { replaceExisting.value = true }
+                        )
+                        Text(
+                            text = "Sostituisci i dati esistenti",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = !replaceExisting.value,
+                                onClick = { replaceExisting.value = false }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = !replaceExisting.value,
+                            onClick = { replaceExisting.value = false }
+                        )
+                        Text(
+                            text = "Aggiungi ai dati esistenti",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                     if (result.errors.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
@@ -167,7 +203,7 @@ fun CsvImportSection(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.confirmImport() }) {
+                TextButton(onClick = { viewModel.confirmImport(replaceExisting.value) }) {
                     Text("Conferma")
                 }
             },
