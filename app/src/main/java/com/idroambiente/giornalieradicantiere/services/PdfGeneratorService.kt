@@ -525,6 +525,11 @@ class PdfGeneratorService @Inject constructor(
         canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, tablePaint)
         y += 15f
 
+        // Presa visione POS
+        val posSymbol = if (giornaliera.presaVisionePOS) "☑" else "☐"
+        canvas.drawText("$posSymbol Presa visione POS: ${if (giornaliera.presaVisionePOS) "Sì" else "No"}", MARGIN, y + 10f, checkboxPaint)
+        y += LINE_HEIGHT
+
         // Timestamp generazione
         val timestampFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY)
         val timestamp = timestampFormat.format(Date())

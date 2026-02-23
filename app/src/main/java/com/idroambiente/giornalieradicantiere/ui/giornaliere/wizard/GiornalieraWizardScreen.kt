@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -73,6 +74,9 @@ fun GiornalieraWizardScreen(
     var showSuccessDialog by remember { mutableStateOf(false) }
     var successInfo by remember { mutableStateOf<Triple<String, String?, String?>>(Triple("", null, null)) }
     var showAnnullaConfirmDialog by remember { mutableStateOf(false) }
+    var showSendConfirmDialog by remember { mutableStateOf(false) }
+    var posConfirmed by remember { mutableStateOf(false) }
+    var pendingSaveAndSend by remember { mutableStateOf(false) }
 
     val isDetailMode = viewModel.isDetailMode
     val isEditMode = uiState.isEditMode
@@ -339,6 +343,52 @@ fun GiornalieraWizardScreen(
         )
     }
 
+    // Dialog conferma presa visione POS
+    if (showSendConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showSendConfirmDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Conferma invio") },
+            text = {
+                Column {
+                    Text("Prima di inviare la giornaliera, conferma la presa visione del Piano Operativo di Sicurezza.")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = posConfirmed,
+                            onCheckedChange = { posConfirmed = it }
+                        )
+                        Text(
+                            text = "Confermo la presa visione del POS",
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                PrimaryButton(
+                    onClick = {
+                        showSendConfirmDialog = false
+                        if (pendingSaveAndSend) {
+                            viewModel.saveAndSendGiornaliera(presaVisionePOS = true)
+                        } else {
+                            viewModel.sendGiornaliera(presaVisionePOS = true)
+                        }
+                    },
+                    enabled = posConfirmed,
+                    content = { Text("Invia") }
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { showSendConfirmDialog = false }) {
+                    Text("Annulla")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             if (isDetailMode) {
@@ -477,8 +527,16 @@ fun GiornalieraWizardScreen(
                 onCancelClick = { showAnnullaConfirmDialog = true },
                 onNextClick = { viewModel.nextStep() },
                 onSaveClick = { viewModel.saveGiornaliera() },
-                onSendClick = { viewModel.sendGiornaliera() },
-                onSaveAndSendClick = { viewModel.saveAndSendGiornaliera() },
+                onSendClick = {
+                    posConfirmed = false
+                    pendingSaveAndSend = false
+                    showSendConfirmDialog = true
+                },
+                onSaveAndSendClick = {
+                    posConfirmed = false
+                    pendingSaveAndSend = true
+                    showSendConfirmDialog = true
+                },
                 isSaving = uiState.isOperationInProgress,
                 isDetailMode = isDetailMode,
                 isEditMode = isEditMode,

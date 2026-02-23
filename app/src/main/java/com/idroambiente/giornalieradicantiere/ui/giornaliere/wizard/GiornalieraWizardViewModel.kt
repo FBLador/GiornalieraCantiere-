@@ -569,29 +569,29 @@ class GiornalieraWizardViewModel @Inject constructor(
         attrezzaturaGiornalieraRepository.insertAll(attrezzaturaGiornaliere)
     }
 
-    fun sendGiornaliera() {
+    fun sendGiornaliera(presaVisionePOS: Boolean = true) {
         viewModelScope.launch {
-            val existingGiornaliera = _uiState.value.giornaliera
+            var giornalieraToSend = _uiState.value.giornaliera
                 ?: return@launch
 
             // Se siamo in edit mode, salva prima le modifiche nel DB
             if (_uiState.value.isEditMode) {
                 _uiState.update { it.copy(isSaving = true) }
                 try {
-                    giornalieraRepository.update(
-                        existingGiornaliera.copy(
-                            note = _uiState.value.note.ifBlank { null },
-                            updatedAt = System.currentTimeMillis()
-                        )
+                    giornalieraToSend = giornalieraToSend.copy(
+                        note = _uiState.value.note.ifBlank { null },
+                        presaVisionePOS = presaVisionePOS,
+                        updatedAt = System.currentTimeMillis()
                     )
+                    giornalieraRepository.update(giornalieraToSend)
 
                     // Delete existing relations and re-insert
-                    personaleGiornalieraRepository.deleteByGiornalieraId(existingGiornaliera.id)
-                    mezzoGiornalieraRepository.deleteByGiornalieraId(existingGiornaliera.id)
-                    attrezzaturaGiornalieraRepository.deleteByGiornalieraId(existingGiornaliera.id)
+                    personaleGiornalieraRepository.deleteByGiornalieraId(giornalieraToSend.id)
+                    mezzoGiornalieraRepository.deleteByGiornalieraId(giornalieraToSend.id)
+                    attrezzaturaGiornalieraRepository.deleteByGiornalieraId(giornalieraToSend.id)
 
-                    saveRelations(existingGiornaliera.id)
-                    _uiState.update { it.copy(isSaving = false) }
+                    saveRelations(giornalieraToSend.id)
+                    _uiState.update { it.copy(isSaving = false, giornaliera = giornalieraToSend) }
                 } catch (e: Exception) {
                     _uiState.update {
                         it.copy(
@@ -601,13 +601,21 @@ class GiornalieraWizardViewModel @Inject constructor(
                     }
                     return@launch
                 }
+            } else {
+                // Giornaliera esistente (es. BOZZA): aggiorna presaVisionePOS
+                giornalieraToSend = giornalieraToSend.copy(
+                    presaVisionePOS = presaVisionePOS,
+                    updatedAt = System.currentTimeMillis()
+                )
+                giornalieraRepository.update(giornalieraToSend)
+                _uiState.update { it.copy(giornaliera = giornalieraToSend) }
             }
 
-            performSend(existingGiornaliera)
+            performSend(giornalieraToSend)
         }
     }
 
-    fun saveAndSendGiornaliera() {
+    fun saveAndSendGiornaliera(presaVisionePOS: Boolean = true) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
             try {
@@ -630,7 +638,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                     cantiereId = cantiereId,
                     data = currentTime,
                     stato = StatoGiornaliera.BOZZA,
-                    note = _uiState.value.note.ifBlank { null }
+                    note = _uiState.value.note.ifBlank { null },
+                    presaVisionePOS = presaVisionePOS
                 )
                 val newId = giornalieraRepository.insert(giornaliera)
 
