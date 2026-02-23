@@ -286,14 +286,14 @@ fun ImpostazioniScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            CodiciArticoloSection(
+            /*CodiciArticoloSection(
                 codiceOreLavoro = exportSettingsState.codiceArticoloOreLavoro,
                 codiceOreViaggio = exportSettingsState.codiceArticoloOreViaggio,
                 onCodiceOreLavoroChange = { exportSettingsViewModel.setCodiceArticoloOreLavoro(it) },
                 onCodiceOreViaggioChange = { exportSettingsViewModel.setCodiceArticoloOreViaggio(it) }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))*/
 
             // Sezione configurazione specifica per modalita
             when (exportSettingsState.storageMode) {
