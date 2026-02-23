@@ -348,7 +348,7 @@ fun GiornalieraWizardScreen(
     }
 
     // Dialog conferma presa visione POS
-    if (showSendConfirmDialog) {
+    /*if (showSendConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showSendConfirmDialog = false },
             containerColor = MaterialTheme.colorScheme.surface,
@@ -391,7 +391,7 @@ fun GiornalieraWizardScreen(
                 }
             }
         )
-    }
+    }*/
 
     Scaffold(
         topBar = {
