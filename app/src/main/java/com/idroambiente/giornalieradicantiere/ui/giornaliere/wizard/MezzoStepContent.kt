@@ -157,9 +157,9 @@ private fun MezzoViewMode(
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            val kmTotali = formData.kmAndata + formData.kmRitorno
+                            val kmTotali = (formData.kmAndata ?: 0f) + (formData.kmRitorno ?: 0f)
                             Text(
-                                text = "KM: ${formatKm(kmTotali)} (andata: ${formatKm(formData.kmAndata)}, ritorno: ${formatKm(formData.kmRitorno)})",
+                                text = "KM: ${formatKm(kmTotali)} (andata: ${formatKm(formData.kmAndata ?: 0f)}, ritorno: ${formatKm(formData.kmRitorno ?: 0f)})",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -228,7 +228,7 @@ private fun MezzoEditMode(
 ) {
     // Determine initial phase: if there are already mezzi with KM data, go to DATA_ENTRY
     val hasExistingData = mezzoSelections.any {
-        it.value.utilizzato && (it.value.kmAndata > 0 || it.value.kmRitorno > 0)
+        it.value.utilizzato && it.value.kmAndata != null && it.value.kmRitorno != null
     }
     var currentPhase by remember {
         mutableStateOf(if (hasExistingData) MezzoEditPhase.DATA_ENTRY else MezzoEditPhase.SELECTION)
@@ -359,8 +359,8 @@ private fun MezzoDataEntryPhase(
     modifier: Modifier = Modifier
 ) {
     // Form state for batch KM
-    var kmAndata by remember { mutableStateOf(0f) }
-    var kmRitorno by remember { mutableStateOf(0f) }
+    var kmAndata by remember { mutableStateOf<Float?>(null) }
+    var kmRitorno by remember { mutableStateOf<Float?>(null) }
 
     // Get list of utilized mezzi
     val utilizzati = mezzoList.filter { mezzoSelections[it.id]?.utilizzato == true }
@@ -370,7 +370,7 @@ private fun MezzoDataEntryPhase(
         mutableStateOf(
             utilizzati.filter { m ->
                 val data = mezzoSelections[m.id]
-                data == null || (data.kmAndata == 0f && data.kmRitorno == 0f)
+                data == null || (data.kmAndata == null || data.kmRitorno == null)
             }.map { it.id }.toSet()
         )
     }
@@ -485,7 +485,7 @@ private fun MezzoDataEntryPhase(
             utilizzati.forEach { mezzo ->
                 val isSelected = selectedIds.contains(mezzo.id)
                 val data = mezzoSelections[mezzo.id]
-                val hasData = data != null && (data.kmAndata > 0 || data.kmRitorno > 0)
+                val hasData = data != null && data.kmAndata != null && data.kmRitorno != null
 
                 Row(
                     modifier = Modifier
@@ -519,7 +519,7 @@ private fun MezzoDataEntryPhase(
                         )
                         if (hasData) {
                             Text(
-                                text = "A: ${formatKm(data!!.kmAndata)} km | R: ${formatKm(data.kmRitorno)} km",
+                                text = "A: ${formatKm(data!!.kmAndata!!)} km | R: ${formatKm(data.kmRitorno!!)} km",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -565,8 +565,8 @@ private fun MezzoDataEntryPhase(
 
 @Composable
 private fun DecimalTextField(
-    value: Float,
-    onValueChange: (Float) -> Unit,
+    value: Float?,
+    onValueChange: (Float?) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
     maxValue: Float = Float.MAX_VALUE
@@ -574,12 +574,12 @@ private fun DecimalTextField(
     var textValue by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        if (value > 0 && textValue.isEmpty()) {
+        if (value != null && value > 0f && textValue.isEmpty()) {
             textValue = value.toString().removeSuffix(".0")
         }
     }
 
-    val isOverMax = value > maxValue
+    val isOverMax = value != null && value > maxValue
 
     OutlinedTextField(
         value = textValue,
@@ -594,7 +594,7 @@ private fun DecimalTextField(
             if (parsed != null) {
                 onValueChange(maxOf(0f, parsed).coerceAtMost(maxValue))
             } else if (filtered.isEmpty()) {
-                onValueChange(0f)
+                onValueChange(null)
             }
         },
         label = { Text(label) },

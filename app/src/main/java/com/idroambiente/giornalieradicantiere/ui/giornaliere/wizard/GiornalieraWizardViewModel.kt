@@ -60,8 +60,8 @@ data class PersonaleFormData(
 
 data class MezzoFormData(
     val utilizzato: Boolean = false,
-    val kmAndata: Float = 0f,
-    val kmRitorno: Float = 0f
+    val kmAndata: Float? = null,   // null = non compilato
+    val kmRitorno: Float? = null   // null = non compilato
 )
 
 data class AttrezzaturaFormData(
@@ -440,7 +440,7 @@ class GiornalieraWizardViewModel @Inject constructor(
             totaleOreViaggio = personalePresenti.values.sumOf { (it.oreViaggioAndata + it.oreViaggioRitorno).toDouble() }.toFloat(),
             totalePernotti = personalePresenti.values.count { it.pernotto },
             totaleMezziUtilizzati = mezziUtilizzati.size,
-            totaleKm = mezziUtilizzati.values.sumOf { (it.kmAndata + it.kmRitorno).toDouble() }.toFloat(),
+            totaleKm = mezziUtilizzati.values.sumOf { ((it.kmAndata ?: 0f) + (it.kmRitorno ?: 0f)).toDouble() }.toFloat(),
             totaleAttrezzatureUtilizzate = attrezzatureUtilizzate.size
         )
     }
@@ -463,12 +463,20 @@ class GiornalieraWizardViewModel @Inject constructor(
     private fun validateCurrentStep(state: WizardUiState): String? {
         return when (state.currentStep) {
             0 -> {
-                val hasValidPersonale = state.personaleSelections.values.any { it.presente && it.oreLavoro > 0f }
-                if (!hasValidPersonale) "Seleziona almeno una persona e compila le ore di lavoro" else null
+                val presenti = state.personaleSelections.values.filter { it.presente }
+                if (presenti.isEmpty()) {
+                    "Seleziona almeno una persona"
+                } else if (presenti.any { it.oreLavoro <= 0f }) {
+                    "Compila il turno (inizio/fine) per tutte le persone selezionate"
+                } else null
             }
             1 -> {
-                val hasValidMezzo = state.mezzoSelections.values.any { it.utilizzato }
-                if (!hasValidMezzo) "Seleziona almeno un mezzo" else null
+                val utilizzati = state.mezzoSelections.values.filter { it.utilizzato }
+                if (utilizzati.isEmpty()) {
+                    "Seleziona almeno un mezzo"
+                } else if (utilizzati.any { it.kmAndata == null || it.kmRitorno == null }) {
+                    "Compila i km per tutti i mezzi selezionati"
+                } else null
             }
             else -> null
         }
@@ -575,8 +583,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                 MezzoGiornaliera(
                     giornalieraId = giornalieraId,
                     mezzoId = mezzoId,
-                    kmAndata = maxOf(0f, data.kmAndata),
-                    kmRitorno = maxOf(0f, data.kmRitorno)
+                    kmAndata = maxOf(0f, data.kmAndata ?: 0f),
+                    kmRitorno = maxOf(0f, data.kmRitorno ?: 0f)
                 )
             }
         mezzoGiornalieraRepository.insertAll(mezzoGiornaliere)
@@ -960,8 +968,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                         giornalieraData = MezzoGiornaliera(
                             giornalieraId = giornaliera.id,
                             mezzoId = mezzoId,
-                            kmAndata = formData.kmAndata,
-                            kmRitorno = formData.kmRitorno
+                            kmAndata = formData.kmAndata ?: 0f,
+                            kmRitorno = formData.kmRitorno ?: 0f
                         )
                     )
                 } else null
