@@ -162,6 +162,17 @@ fun GiornalieraWizardScreen(
         }
     }
 
+    // Handle step validation error
+    LaunchedEffect(uiState.stepValidationError) {
+        uiState.stepValidationError?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.clearStepValidationError()
+        }
+    }
+
     // Navigate back when completed (but not for PDF states that need user interaction)
     LaunchedEffect(uiState.saveCompleted, uiState.pdfStatus) {
         if (uiState.saveCompleted && uiState.pdfStatus is PdfStatus.Idle) {

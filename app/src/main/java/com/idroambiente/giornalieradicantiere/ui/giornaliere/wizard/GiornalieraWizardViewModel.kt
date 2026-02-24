@@ -104,7 +104,8 @@ data class WizardUiState(
     val showOfflineDialog: Boolean = false,
     val duplicateError: String? = null,
     val selectedDate: Long? = null,
-    val previousMezzoDataResult: PreviousMezzoDataResult? = null
+    val previousMezzoDataResult: PreviousMezzoDataResult? = null,
+    val stepValidationError: String? = null
 ) {
     val isOperationInProgress: Boolean
         get() = isSaving || pdfStatus is PdfStatus.Generating || pdfStatus is PdfStatus.Saving
@@ -447,11 +448,34 @@ class GiornalieraWizardViewModel @Inject constructor(
     fun nextStep() {
         _uiState.update { state ->
             if (state.currentStep < 3) {
-                state.copy(currentStep = state.currentStep + 1)
+                val validationError = validateCurrentStep(state)
+                if (validationError != null) {
+                    state.copy(stepValidationError = validationError)
+                } else {
+                    state.copy(currentStep = state.currentStep + 1, stepValidationError = null)
+                }
             } else {
                 state
             }
         }
+    }
+
+    private fun validateCurrentStep(state: WizardUiState): String? {
+        return when (state.currentStep) {
+            0 -> {
+                val hasValidPersonale = state.personaleSelections.values.any { it.presente && it.oreLavoro > 0f }
+                if (!hasValidPersonale) "Seleziona almeno una persona e compila le ore di lavoro" else null
+            }
+            1 -> {
+                val hasValidMezzo = state.mezzoSelections.values.any { it.utilizzato }
+                if (!hasValidMezzo) "Seleziona almeno un mezzo" else null
+            }
+            else -> null
+        }
+    }
+
+    fun clearStepValidationError() {
+        _uiState.update { it.copy(stepValidationError = null) }
     }
 
     fun previousStep() {
