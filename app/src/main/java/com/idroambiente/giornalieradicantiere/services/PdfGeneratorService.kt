@@ -307,8 +307,6 @@ class PdfGeneratorService @Inject constructor(
         val infoLines = listOf(
             "Commessa: ${formatCommessaNome(data.commessa.nome)}",
             "Cliente: ${data.commessa.cliente}",
-            "Cantiere: ${data.cantiere.nome}",
-            //"Indirizzo: ${data.cantiere.indirizzo}"
         )
 
         infoLines.forEach { line ->

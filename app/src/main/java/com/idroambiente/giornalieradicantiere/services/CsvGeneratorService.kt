@@ -57,7 +57,7 @@ class CsvGeneratorService @Inject constructor(
         // Header
         sb.appendLine(
             listOf(
-                "Data", "Commessa", "Cliente", "Cantiere", "Compilato Da",
+                "Data", "Commessa", "Cliente", "Compilato Da",
                 "Tipo", "Nome", "Cognome",
                 "Ore Lavoro", "Ore Viaggio Andata", "Ore Viaggio Ritorno",
                 "Inizio Turno", "Fine Turno", "Pernotto",
@@ -70,7 +70,6 @@ class CsvGeneratorService @Inject constructor(
         val dataStr = dateFormat.format(Date(data.giornaliera.data))
         val commessaNome = formatCommessaNome(data.commessa.nome)
         val cliente = escapeCsv(data.commessa.cliente)
-        val cantiere = escapeCsv(data.cantiere.nome)
         val compilatoDa = escapeCsv(data.userName ?: "")
 
         // Righe personale
@@ -79,7 +78,7 @@ class CsvGeneratorService @Inject constructor(
             val g = item.giornalieraData
             sb.appendLine(
                 listOf(
-                    dataStr, commessaNome, cliente, cantiere, compilatoDa,
+                    dataStr, commessaNome, cliente, compilatoDa,
                     "Personale",
                     escapeCsv(p.nome),
                     escapeCsv(p.cognome),
@@ -101,7 +100,7 @@ class CsvGeneratorService @Inject constructor(
             val kmTotale = g.kmAndata + g.kmRitorno
             sb.appendLine(
                 listOf(
-                    dataStr, commessaNome, cliente, cantiere, compilatoDa,
+                    dataStr, commessaNome, cliente, compilatoDa,
                     "Mezzo",
                     escapeCsv(m.nome),
                     "",
@@ -121,7 +120,7 @@ class CsvGeneratorService @Inject constructor(
         for (attrezzatura in data.attrezzatureList) {
             sb.appendLine(
                 listOf(
-                    dataStr, commessaNome, cliente, cantiere, compilatoDa,
+                    dataStr, commessaNome, cliente, compilatoDa,
                     "Attrezzatura",
                     escapeCsv(attrezzatura.nome),
                     "",
