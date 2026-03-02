@@ -81,6 +81,16 @@ sealed class PdfStatus {
     data class Error(val message: String?) : PdfStatus()
 }
 
+sealed class SendPhase {
+    data object Idle : SendPhase()
+    data object PreparingData : SendPhase()
+    data object GeneratingPdf : SendPhase()
+    data object GeneratingCsv : SendPhase()
+    data object UploadingPdf : SendPhase()
+    data object UploadingCsv : SendPhase()
+    data object Finalizing : SendPhase()
+}
+
 data class PreviousMezzoDataResult(
     val message: String,
     val updatedCount: Int
@@ -99,6 +109,7 @@ data class WizardUiState(
     val riepilogo: RiepilogoData = RiepilogoData(),
     val note: String = "",
     val pdfStatus: PdfStatus = PdfStatus.Idle,
+    val sendPhase: SendPhase = SendPhase.Idle,
     val showConfigErrorDialog: Boolean = false,
     val configErrorMessage: String? = null,
     val showOfflineDialog: Boolean = false,
@@ -108,7 +119,7 @@ data class WizardUiState(
     val stepValidationError: String? = null
 ) {
     val isOperationInProgress: Boolean
-        get() = isSaving || pdfStatus is PdfStatus.Generating || pdfStatus is PdfStatus.Saving
+        get() = isSaving || sendPhase != SendPhase.Idle
 }
 
 @HiltViewModel
@@ -628,6 +639,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSaving = false,
+                            sendPhase = SendPhase.Idle,
                             pdfStatus = PdfStatus.Error(e.message ?: "Errore durante il salvataggio")
                         )
                     }
@@ -659,6 +671,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                     _uiState.update { 
                         it.copy(
                             isSaving = false,
+                            sendPhase = SendPhase.Idle,
                             duplicateError = "Esiste già una giornaliera per questo cantiere in questa data",
                             pdfStatus = PdfStatus.Error("Esiste già una giornaliera per questo cantiere in questa data")
                         )
@@ -690,6 +703,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isSaving = false,
+                        sendPhase = SendPhase.Idle,
                         pdfStatus = PdfStatus.Error(e.message ?: "Errore durante il salvataggio")
                     )
                 }
@@ -712,6 +726,8 @@ class GiornalieraWizardViewModel @Inject constructor(
             if (validationError != null) {
                 _uiState.update {
                     it.copy(
+                        isSaving = false,
+                        sendPhase = SendPhase.Idle,
                         showConfigErrorDialog = true,
                         configErrorMessage = validationError
                     )
@@ -721,11 +737,23 @@ class GiornalieraWizardViewModel @Inject constructor(
 
             // Network check for Google Drive
             if (storageMode == StorageMode.GOOGLE_DRIVE && !networkUtils.isOnline()) {
-                _uiState.update { it.copy(showOfflineDialog = true) }
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        sendPhase = SendPhase.Idle,
+                        showOfflineDialog = true
+                    )
+                }
                 return
             }
 
-            _uiState.update { it.copy(isSaving = true, pdfStatus = PdfStatus.Generating) }
+            _uiState.update {
+                it.copy(
+                    isSaving = true,
+                    sendPhase = SendPhase.PreparingData,
+                    pdfStatus = PdfStatus.Generating
+                )
+            }
 
             // 1. Raccogli tutti i dati per il PDF (prima di cambiare stato)
             val pdfData = collectPdfData(giornaliera)
@@ -733,9 +761,11 @@ class GiornalieraWizardViewModel @Inject constructor(
             val giornalieraData = giornaliera.data
 
             // 2. Genera PDF
+            _uiState.update { it.copy(sendPhase = SendPhase.GeneratingPdf, pdfStatus = PdfStatus.Generating) }
             val pdfFile = pdfGeneratorService.generateGiornalieraPdf(pdfData)
 
             // 2b. Genera CSV (best-effort, non bloccante)
+            _uiState.update { it.copy(sendPhase = SendPhase.GeneratingCsv) }
             val csvFile = try {
                 csvGeneratorService.generateGiornalieraCsv(pdfData)
             } catch (_: Exception) {
@@ -745,19 +775,27 @@ class GiornalieraWizardViewModel @Inject constructor(
             // 3. Salva/Condividi in base alle preferenze
             when (exportBehavior) {
                 ExportBehavior.SAVE -> {
-                    _uiState.update { it.copy(pdfStatus = PdfStatus.Saving) }
+                    _uiState.update {
+                        it.copy(
+                            sendPhase = SendPhase.UploadingPdf,
+                            pdfStatus = PdfStatus.Saving
+                        )
+                    }
                     val saveResult = fileStorageService.savePdf(pdfFile, commessaNome, giornalieraData)
                     when (saveResult) {
                         is SaveResult.Success -> {
                             // Salva anche il CSV (best-effort)
                             if (csvFile != null) {
+                                _uiState.update { it.copy(sendPhase = SendPhase.UploadingCsv) }
                                 try { fileStorageService.saveCsv(csvFile, commessaNome, giornalieraData) } catch (_: Exception) {}
                             }
                             // Aggiorna stato a INVIATA solo dopo salvataggio riuscito
+                            _uiState.update { it.copy(sendPhase = SendPhase.Finalizing) }
                             markAsInviata(giornaliera)
                             _uiState.update {
                                 it.copy(
                                     isSaving = false,
+                                    sendPhase = SendPhase.Idle,
                                     saveCompleted = true,
                                     pdfStatus = PdfStatus.Success(
                                         uri = saveResult.uri,
@@ -770,17 +808,21 @@ class GiornalieraWizardViewModel @Inject constructor(
                         }
                         is SaveResult.Error -> {
                             // Fallback: salva localmente
+                            _uiState.update { it.copy(sendPhase = SendPhase.UploadingPdf, pdfStatus = PdfStatus.Saving) }
                             val localResult = fileStorageService.savePdfToAppStorage(pdfFile)
                             when (localResult) {
                                 is SaveResult.Success -> {
                                     // Salva anche CSV nel fallback (best-effort)
                                     if (csvFile != null) {
+                                        _uiState.update { it.copy(sendPhase = SendPhase.UploadingCsv) }
                                         try { fileStorageService.saveCsvToAppStorage(csvFile) } catch (_: Exception) {}
                                     }
+                                    _uiState.update { it.copy(sendPhase = SendPhase.Finalizing) }
                                     markAsInviata(giornaliera)
                                     _uiState.update {
                                         it.copy(
                                             isSaving = false,
+                                            sendPhase = SendPhase.Idle,
                                             saveCompleted = true,
                                             pdfStatus = PdfStatus.Success(
                                                 uri = localResult.uri,
@@ -794,6 +836,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                                     _uiState.update {
                                         it.copy(
                                             isSaving = false,
+                                            sendPhase = SendPhase.Idle,
                                             pdfStatus = PdfStatus.Error(localResult.message)
                                         )
                                     }
@@ -805,19 +848,31 @@ class GiornalieraWizardViewModel @Inject constructor(
                 ExportBehavior.SHARE -> {
                     // Share rimane solo PDF, ma salva CSV se possibile
                     if (csvFile != null) {
+                        _uiState.update { it.copy(sendPhase = SendPhase.UploadingCsv) }
                         try { fileStorageService.saveCsvToAppStorage(csvFile) } catch (_: Exception) {}
                     }
                     val shareIntent = fileStorageService.createShareChooserIntent(pdfFile)
                     _uiState.update {
                         it.copy(
+                            sendPhase = SendPhase.Finalizing
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(
                             isSaving = false,
+                            sendPhase = SendPhase.Idle,
                             saveCompleted = true,
                             pdfStatus = PdfStatus.ReadyToShare(shareIntent, pdfFile)
                         )
                     }
                 }
                 ExportBehavior.BOTH -> {
-                    _uiState.update { it.copy(pdfStatus = PdfStatus.Saving) }
+                    _uiState.update {
+                        it.copy(
+                            sendPhase = SendPhase.UploadingPdf,
+                            pdfStatus = PdfStatus.Saving
+                        )
+                    }
 
                     // Copia il file cache prima del salvataggio per evitare doppia generazione
                     val pdfCopy = File(pdfFile.parent, "share_${pdfFile.name}")
@@ -830,12 +885,15 @@ class GiornalieraWizardViewModel @Inject constructor(
                         is SaveResult.Success -> {
                             // Salva anche il CSV (best-effort)
                             if (csvFile != null) {
+                                _uiState.update { it.copy(sendPhase = SendPhase.UploadingCsv) }
                                 try { fileStorageService.saveCsv(csvFile, commessaNome, giornalieraData) } catch (_: Exception) {}
                             }
+                            _uiState.update { it.copy(sendPhase = SendPhase.Finalizing) }
                             markAsInviata(giornaliera)
                             _uiState.update {
                                 it.copy(
                                     isSaving = false,
+                                    sendPhase = SendPhase.Idle,
                                     saveCompleted = true,
                                     pdfStatus = PdfStatus.SavedAndReadyToShare(
                                         uri = saveResult.uri,
@@ -848,9 +906,11 @@ class GiornalieraWizardViewModel @Inject constructor(
                         }
                         is SaveResult.Error -> {
                             // Salvataggio fallito ma condividi comunque
+                            _uiState.update { it.copy(sendPhase = SendPhase.Finalizing) }
                             _uiState.update {
                                 it.copy(
                                     isSaving = false,
+                                    sendPhase = SendPhase.Idle,
                                     saveCompleted = true,
                                     pdfStatus = PdfStatus.ReadyToShare(shareIntent, pdfCopy)
                                 )
@@ -863,6 +923,7 @@ class GiornalieraWizardViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     isSaving = false,
+                    sendPhase = SendPhase.Idle,
                     pdfStatus = PdfStatus.Error(e.message ?: "Errore durante l'invio")
                 )
             }
@@ -1014,7 +1075,7 @@ class GiornalieraWizardViewModel @Inject constructor(
      * Resetta lo stato del PDF (da chiamare dopo aver gestito il risultato)
      */
     fun resetPdfStatus() {
-        _uiState.update { it.copy(pdfStatus = PdfStatus.Idle) }
+        _uiState.update { it.copy(pdfStatus = PdfStatus.Idle, sendPhase = SendPhase.Idle, isSaving = false) }
     }
 
     /**

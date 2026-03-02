@@ -3,6 +3,9 @@ package com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +24,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -68,15 +72,13 @@ fun GiornalieraWizardScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val overlayInteractionSource = remember { MutableInteractionSource() }
     
     var showErrorDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var successInfo by remember { mutableStateOf<Triple<String, String?, String?>>(Triple("", null, null)) }
     var showAnnullaConfirmDialog by remember { mutableStateOf(false) }
-    var showSendConfirmDialog by remember { mutableStateOf(false) }
-    var posConfirmed by remember { mutableStateOf(false) }
-    var pendingSaveAndSend by remember { mutableStateOf(false) }
 
     val isDetailMode = viewModel.isDetailMode
     val isEditMode = uiState.isEditMode
@@ -358,52 +360,6 @@ fun GiornalieraWizardScreen(
         )
     }
 
-    // Dialog conferma presa visione POS
-    /*if (showSendConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showSendConfirmDialog = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Conferma invio") },
-            text = {
-                Column {
-                    Text("Prima di inviare la giornaliera, conferma la presa visione del Piano Operativo di Sicurezza.")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = posConfirmed,
-                            onCheckedChange = { posConfirmed = it }
-                        )
-                        Text(
-                            text = "Confermo la presa visione del POS",
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                PrimaryButton(
-                    onClick = {
-                        showSendConfirmDialog = false
-                        if (pendingSaveAndSend) {
-                            viewModel.saveAndSendGiornaliera(presaVisionePOS = true)
-                        } else {
-                            viewModel.sendGiornaliera(presaVisionePOS = true)
-                        }
-                    },
-                    enabled = posConfirmed,
-                    content = { Text("Invia") }
-                )
-            },
-            dismissButton = {
-                TextButton(onClick = { showSendConfirmDialog = false }) {
-                    Text("Annulla")
-                }
-            }
-        )
-    }*/
-
     Scaffold(
         topBar = {
             if (isDetailMode) {
@@ -506,29 +462,49 @@ fun GiornalieraWizardScreen(
                     }
                 }
 
-                // Show loading overlay for saving/PDF generation
+                // Show blocking loading overlay for send/save operations
                 if (uiState.isOperationInProgress) {
                     Box(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.45f))
+                            .clickable(
+                                interactionSource = overlayInteractionSource,
+                                indication = null,
+                                onClick = {}
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth(0.82f)
+                                .padding(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = when (uiState.pdfStatus) {
-                                    is PdfStatus.Generating -> "Generazione PDF..."
-                                    is PdfStatus.Saving -> "Salvataggio in corso..."
-                                    else -> "Salvataggio..."
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center
-                            )
+                            Column(
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = sendPhaseTitle(uiState.sendPhase, uiState.pdfStatus),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "L'operazione potrebbe richiedere alcuni secondi.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                 }
@@ -543,14 +519,10 @@ fun GiornalieraWizardScreen(
                 onNextClick = { viewModel.nextStep() },
                 onSaveClick = { viewModel.saveGiornaliera() },
                 onSendClick = {
-                    posConfirmed = false
-                    pendingSaveAndSend = false
-                    showSendConfirmDialog = true
+                    viewModel.sendGiornaliera(presaVisionePOS = true)
                 },
                 onSaveAndSendClick = {
-                    posConfirmed = false
-                    pendingSaveAndSend = true
-                    showSendConfirmDialog = true
+                    viewModel.saveAndSendGiornaliera(presaVisionePOS = true)
                 },
                 isSaving = uiState.isOperationInProgress,
                 isDetailMode = isDetailMode,
@@ -558,6 +530,22 @@ fun GiornalieraWizardScreen(
                 isGiornalieraInviata = isGiornalieraInviata
             )
         }
+    }
+}
+
+private fun sendPhaseTitle(sendPhase: SendPhase, pdfStatus: PdfStatus): String {
+    return when (sendPhase) {
+        SendPhase.Idle -> when (pdfStatus) {
+            is PdfStatus.Generating -> "Generazione PDF..."
+            is PdfStatus.Saving -> "Salvataggio in corso..."
+            else -> "Invio in corso..."
+        }
+        SendPhase.PreparingData -> "Preparazione invio..."
+        SendPhase.GeneratingPdf -> "Generazione PDF..."
+        SendPhase.GeneratingCsv -> "Preparazione CSV..."
+        SendPhase.UploadingPdf -> "Caricamento PDF..."
+        SendPhase.UploadingCsv -> "Caricamento CSV..."
+        SendPhase.Finalizing -> "Finalizzazione invio..."
     }
 }
 
