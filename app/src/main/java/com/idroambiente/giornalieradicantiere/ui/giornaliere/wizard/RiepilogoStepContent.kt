@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.idroambiente.giornalieradicantiere.database.entities.Attrezzatura
 import com.idroambiente.giornalieradicantiere.database.entities.Mezzo
 import com.idroambiente.giornalieradicantiere.database.entities.Personale
+import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.formatKm
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -352,7 +353,7 @@ fun RiepilogoStepContent(
                                     )
                                 }
                                 Text(
-                                    text = "${formatKm(data.kmAndata + data.kmRitorno)} km",
+                                    text = "${formatKm((data.kmAndata ?: 0f) + (data.kmRitorno ?: 0f))} km",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
