@@ -284,6 +284,10 @@ fun ImpostazioniScreen(
 
             CsvImportSection()
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            GiornalieraImportSection()
+
             Spacer(modifier = Modifier.height(24.dp))
 
             /*CodiciArticoloSection(
