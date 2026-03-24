@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.idroambiente.giornalieradicantiere.database.entities.Personale
+import com.idroambiente.giornalieradicantiere.ui.components.DurationWheelPickerField
 
 /**
  * Enum for the two phases of personnel data entry
@@ -450,19 +451,19 @@ private fun PersonaleDataEntryPhase(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                DecimalTextField(
+                DurationWheelPickerField(
                     value = oreViaggioAndata,
                     onValueChange = { oreViaggioAndata = it },
                     label = "Andata",
                     modifier = Modifier.weight(1f),
-                    maxValue = 24f
+                    maxTotalHours = 24f
                 )
-                DecimalTextField(
+                DurationWheelPickerField(
                     value = oreViaggioRitorno,
                     onValueChange = { oreViaggioRitorno = it },
                     label = "Ritorno",
                     modifier = Modifier.weight(1f),
-                    maxValue = 24f
+                    maxTotalHours = 24f
                 )
             }
 
