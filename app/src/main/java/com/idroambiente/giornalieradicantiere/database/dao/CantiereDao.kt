@@ -20,6 +20,9 @@ interface CantiereDao {
     @Query("SELECT * FROM cantiere WHERE commessaId = :commessaId ORDER BY id DESC")
     fun getByCommessaId(commessaId: Long): Flow<List<Cantiere>>
 
+    @Query("SELECT * FROM cantiere WHERE commessaId = :commessaId ORDER BY id DESC")
+    suspend fun getByCommessaIdSync(commessaId: Long): List<Cantiere>
+
     @Query("SELECT * FROM cantiere WHERE nome LIKE '%' || :query || '%' ORDER BY id DESC")
     fun search(query: String): Flow<List<Cantiere>>
 

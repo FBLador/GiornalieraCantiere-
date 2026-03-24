@@ -11,6 +11,8 @@ class CantiereRepository(private val cantiereDao: CantiereDao) {
 
     fun getByCommessaId(commessaId: Long): Flow<List<Cantiere>> = cantiereDao.getByCommessaId(commessaId)
 
+    suspend fun getByCommessaIdSync(commessaId: Long): List<Cantiere> = cantiereDao.getByCommessaIdSync(commessaId)
+
     fun search(query: String): Flow<List<Cantiere>> = cantiereDao.search(query)
 
     suspend fun insert(cantiere: Cantiere): Long = cantiereDao.insert(cantiere)
