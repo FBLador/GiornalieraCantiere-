@@ -1,8 +1,5 @@
 package com.idroambiente.giornalieradicantiere.ui.impostazioni
 
-import android.content.Context
-import android.net.Uri
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.idroambiente.giornalieradicantiere.database.entities.Attrezzatura
@@ -24,18 +21,16 @@ import com.idroambiente.giornalieradicantiere.database.repository.MezzoGiornalie
 import com.idroambiente.giornalieradicantiere.database.repository.MezzoRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleGiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleRepository
-import com.idroambiente.giornalieradicantiere.data.preferences.PreferencesRepository
+import com.idroambiente.giornalieradicantiere.services.DriveFolder
+import com.idroambiente.giornalieradicantiere.services.GoogleDriveService
 import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -99,79 +94,184 @@ class GiornalieraImportViewModel @Inject constructor(
     private val personaleGiornalieraRepository: PersonaleGiornalieraRepository,
     private val mezzoGiornalieraRepository: MezzoGiornalieraRepository,
     private val attrezzaturaGiornalieraRepository: AttrezzaturaGiornalieraRepository,
-    preferencesRepository: PreferencesRepository
+    private val googleDriveService: GoogleDriveService
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<GiornalieraImportState>(GiornalieraImportState.Idle)
     val state: StateFlow<GiornalieraImportState> = _state.asStateFlow()
 
-    val exportFolderUri: StateFlow<Uri?> = preferencesRepository.exportFolderUri
-        .map { uriString -> uriString?.let { Uri.parse(it) } }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val _showFolderPicker = MutableStateFlow(false)
+    val showFolderPicker: StateFlow<Boolean> = _showFolderPicker.asStateFlow()
 
-    fun scanFolder(folderUri: Uri, context: Context) {
+    private val _folderPickerState = MutableStateFlow(FolderPickerState())
+    val folderPickerState: StateFlow<FolderPickerState> = _folderPickerState.asStateFlow()
+
+    // ── Folder picker ──────────────────────────────────────────────
+
+    fun openFolderPicker() {
+        _showFolderPicker.value = true
+        _folderPickerState.value = FolderPickerState()
+        loadFolders("root")
+    }
+
+    fun closeFolderPicker() {
+        _showFolderPicker.value = false
+        _folderPickerState.value = FolderPickerState()
+    }
+
+    fun loadFolders(folderId: String) {
+        viewModelScope.launch {
+            _folderPickerState.value = _folderPickerState.value.copy(isLoading = true)
+
+            if (folderId == "root") {
+                coroutineScope {
+                    val myDriveDeferred = async { googleDriveService.listFolders("root") }
+                    val sharedDeferred = async { googleDriveService.listSharedFolders() }
+                    val myDriveResult = myDriveDeferred.await()
+                    val sharedResult = sharedDeferred.await()
+
+                    myDriveResult.fold(
+                        onSuccess = { folders ->
+                            val sharedFolders = sharedResult.getOrElse { emptyList() }
+                            _folderPickerState.value = _folderPickerState.value.copy(
+                                folders = folders,
+                                sharedFolders = sharedFolders,
+                                isLoading = false,
+                                currentFolderId = folderId
+                            )
+                        },
+                        onFailure = { error ->
+                            _state.value = GiornalieraImportState.Error(error.message ?: "Errore caricamento cartelle")
+                            _folderPickerState.value = _folderPickerState.value.copy(
+                                isLoading = false,
+                                sharedFolders = emptyList()
+                            )
+                        }
+                    )
+                }
+            } else {
+                val result = googleDriveService.listFolders(folderId)
+                result.fold(
+                    onSuccess = { folders ->
+                        _folderPickerState.value = _folderPickerState.value.copy(
+                            folders = folders,
+                            sharedFolders = emptyList(),
+                            isLoading = false,
+                            currentFolderId = folderId
+                        )
+                    },
+                    onFailure = { error ->
+                        _state.value = GiornalieraImportState.Error(error.message ?: "Errore caricamento cartelle")
+                        _folderPickerState.value = _folderPickerState.value.copy(
+                            isLoading = false,
+                            sharedFolders = emptyList()
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    fun navigateToFolder(folder: DriveFolder) {
+        val currentBreadcrumbs = _folderPickerState.value.breadcrumbs.toMutableList()
+        currentBreadcrumbs.add(folder.id to folder.name)
+
+        _folderPickerState.value = _folderPickerState.value.copy(
+            currentFolderId = folder.id,
+            currentFolderName = folder.name,
+            breadcrumbs = currentBreadcrumbs
+        )
+
+        loadFolders(folder.id)
+    }
+
+    fun navigateToBreadcrumb(index: Int) {
+        val breadcrumbs = _folderPickerState.value.breadcrumbs.take(index + 1)
+        val (folderId, folderName) = breadcrumbs.last()
+
+        _folderPickerState.value = _folderPickerState.value.copy(
+            currentFolderId = folderId,
+            currentFolderName = folderName,
+            breadcrumbs = breadcrumbs
+        )
+
+        loadFolders(folderId)
+    }
+
+    // ── Scan Drive folder ──────────────────────────────────────────
+
+    fun selectAndScanFolder() {
+        val folderId = _folderPickerState.value.currentFolderId
+        _showFolderPicker.value = false
+
         viewModelScope.launch {
             _state.value = GiornalieraImportState.Scanning
             try {
-                val folder = DocumentFile.fromTreeUri(context, folderUri)
-                    ?: run {
-                        _state.value = GiornalieraImportState.Error("Impossibile accedere alla cartella selezionata")
-                        return@launch
-                    }
-
-                val csvFiles = folder.listFiles().filter {
-                    it.isFile && (it.name?.endsWith(".csv", ignoreCase = true) == true)
-                }
-
-                if (csvFiles.isEmpty()) {
-                    _state.value = GiornalieraImportState.Error("Nessun file CSV trovato nella cartella selezionata")
+                // 1. List CSV files in the selected folder
+                val csvFilesResult = googleDriveService.listCsvFiles(folderId)
+                val csvFiles = csvFilesResult.getOrElse { error ->
+                    _state.value = GiornalieraImportState.Error(
+                        "Errore accesso alla cartella: ${error.message}"
+                    )
                     return@launch
                 }
 
+                if (csvFiles.isEmpty()) {
+                    _state.value = GiornalieraImportState.Error(
+                        "Nessun file CSV trovato nella cartella selezionata"
+                    )
+                    return@launch
+                }
+
+                // 2. Download and parse each CSV file
                 val allRows = mutableListOf<List<String>>()
                 val errors = mutableListOf<String>()
                 var fileCount = 0
 
                 for (csvFile in csvFiles) {
-                    val fileName = csvFile.name ?: "unknown"
+                    val fileName = csvFile.name
                     try {
-                        context.contentResolver.openInputStream(csvFile.uri)?.use { inputStream ->
-                            val reader = BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8))
-                            val lines = reader.readLines()
-                            if (lines.isEmpty()) {
-                                errors.add("$fileName: file vuoto")
-                                return@use
-                            }
+                        val contentResult = googleDriveService.downloadFileContent(csvFile.id)
+                        if (contentResult.isFailure) {
+                            errors.add("$fileName: ${contentResult.exceptionOrNull()?.message}")
+                            continue
+                        }
+                        val content = contentResult.getOrThrow()
 
-                            var startIndex = 0
-                            var firstLine = lines[0]
-                            if (firstLine.startsWith("\uFEFF")) {
-                                firstLine = firstLine.removePrefix("\uFEFF")
-                            }
-                            val firstFields = splitCsvLine(firstLine)
-                            if (firstFields.isNotEmpty() && firstFields[0].trim().equals("Data", ignoreCase = true)) {
-                                startIndex = 1
-                            }
+                        val lines = content.lines()
+                        if (lines.isEmpty() || (lines.size == 1 && lines[0].isBlank())) {
+                            errors.add("$fileName: file vuoto")
+                            continue
+                        }
 
-                            var rowsParsed = 0
-                            for (i in startIndex until lines.size) {
-                                var line = lines[i]
-                                if (i == 0 && line.startsWith("\uFEFF")) {
-                                    line = line.removePrefix("\uFEFF")
-                                }
-                                line = line.trim()
-                                if (line.isEmpty()) continue
+                        var startIndex = 0
+                        var firstLine = lines[0]
+                        if (firstLine.startsWith("\uFEFF")) {
+                            firstLine = firstLine.removePrefix("\uFEFF")
+                        }
+                        val firstFields = splitCsvLine(firstLine)
+                        if (firstFields.isNotEmpty() && firstFields[0].trim().equals("Data", ignoreCase = true)) {
+                            startIndex = 1
+                        }
 
-                                val fields = splitCsvLine(line)
-                                if (fields.size < 6) {
-                                    errors.add("$fileName riga ${i + 1}: colonne insufficienti (${fields.size})")
-                                    continue
-                                }
-                                allRows.add(fields)
-                                rowsParsed++
+                        var rowsParsed = 0
+                        for (i in startIndex until lines.size) {
+                            var line = lines[i]
+                            if (i == 0 && line.startsWith("\uFEFF")) {
+                                line = line.removePrefix("\uFEFF")
                             }
-                            if (rowsParsed > 0) fileCount++
-                        } ?: errors.add("$fileName: impossibile aprire il file")
+                            line = line.trim()
+                            if (line.isEmpty()) continue
+
+                            val fields = splitCsvLine(line)
+                            if (fields.size < 6) {
+                                errors.add("$fileName riga ${i + 1}: colonne insufficienti (${fields.size})")
+                                continue
+                            }
+                            allRows.add(fields)
+                            rowsParsed++
+                        }
+                        if (rowsParsed > 0) fileCount++
                     } catch (e: Exception) {
                         errors.add("$fileName: ${e.message}")
                     }
@@ -185,7 +285,7 @@ class GiornalieraImportViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Group by (Data + Commessa)
+                // 3. Group by (Data + Commessa) and build ParsedGiornaliera
                 val grouped = mutableMapOf<Pair<Long, Int>, MutableList<List<String>>>()
                 for (fields in allRows) {
                     try {
@@ -198,7 +298,6 @@ class GiornalieraImportViewModel @Inject constructor(
                     }
                 }
 
-                // Build ParsedGiornaliera list
                 val giornaliere = mutableListOf<ParsedGiornaliera>()
                 val newPersonaleNames = mutableSetOf<String>()
                 val newMezziTarghe = mutableSetOf<String>()
@@ -305,6 +404,8 @@ class GiornalieraImportViewModel @Inject constructor(
             }
         }
     }
+
+    // ── Import ─────────────────────────────────────────────────────
 
     fun confirmImport() {
         val currentState = _state.value

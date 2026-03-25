@@ -65,7 +65,9 @@ fun GoogleDriveFolderPickerDialog(
     onCreateFolder: (String) -> Unit,
     onShowCreateFolderDialog: () -> Unit,
     onHideCreateFolderDialog: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    footerHintText: String = "Le sottocartelle per commessa verranno create automaticamente",
+    showCreateFolderFab: Boolean = true
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -172,16 +174,18 @@ fun GoogleDriveFolderPickerDialog(
                         )
                     }
                     
-                    AppFAB(
-                        onClick = onShowCreateFolderDialog,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Crea cartella"
-                        )
+                    if (showCreateFolderFab) {
+                        AppFAB(
+                            onClick = onShowCreateFolderDialog,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Crea cartella"
+                            )
+                        }
                     }
                 }
                 
@@ -190,7 +194,8 @@ fun GoogleDriveFolderPickerDialog(
                 // Footer with selection button
                 FolderPickerFooter(
                     currentFolderName = state.currentFolderName,
-                    onSelectFolder = onSelectFolder
+                    onSelectFolder = onSelectFolder,
+                    hintText = footerHintText
                 )
             }
         }
@@ -323,7 +328,8 @@ private fun FoldersList(
 @Composable
 private fun FolderPickerFooter(
     currentFolderName: String,
-    onSelectFolder: () -> Unit
+    onSelectFolder: () -> Unit,
+    hintText: String = "Le sottocartelle per commessa verranno create automaticamente"
 ) {
     Column(
         modifier = Modifier
@@ -332,7 +338,7 @@ private fun FolderPickerFooter(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Le sottocartelle per commessa verranno create automaticamente",
+            text = hintText,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

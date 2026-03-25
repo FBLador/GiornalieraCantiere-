@@ -29,6 +29,14 @@ data class DriveFolder(
 )
 
 /**
+ * Represents a CSV file on Google Drive
+ */
+data class DriveCsvFile(
+    val id: String,
+    val name: String
+)
+
+/**
  * Result of a successful file upload
  */
 data class UploadResult(
@@ -519,6 +527,59 @@ class GoogleDriveService @Inject constructor(
                     .execute()
 
                 Result.success(DriveFolder(file.id, file.name))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Lists CSV files within a folder.
+     * @param folderId The ID of the folder to list CSV files from
+     * @return Result containing list of CSV files or error
+     */
+    suspend fun listCsvFiles(folderId: String): Result<List<DriveCsvFile>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                val query = "'$folderId' in parents and mimeType = '$MIME_TYPE_CSV' and trashed = false"
+
+                val result = driveService.files().list()
+                    .setQ(query)
+                    .setSpaces("drive")
+                    .setFields("files(id, name)")
+                    .setOrderBy("name")
+                    .execute()
+
+                val csvFiles = result.files?.map { file ->
+                    DriveCsvFile(id = file.id, name = file.name)
+                } ?: emptyList()
+
+                Result.success(csvFiles)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Downloads the text content of a file from Google Drive.
+     * @param fileId The ID of the file to download
+     * @return Result containing the file content as a String or error
+     */
+    suspend fun downloadFileContent(fileId: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                val inputStream = driveService.files().get(fileId)
+                    .executeMediaAsInputStream()
+
+                val content = inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                Result.success(content)
             } catch (e: Exception) {
                 Result.failure(e)
             }

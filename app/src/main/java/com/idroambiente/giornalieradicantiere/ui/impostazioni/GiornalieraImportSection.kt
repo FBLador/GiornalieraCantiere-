@@ -1,8 +1,6 @@
 package com.idroambiente.giornalieradicantiere.ui.impostazioni
 
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,16 +37,9 @@ fun GiornalieraImportSection(
     viewModel: GiornalieraImportViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val exportFolderUri by viewModel.exportFolderUri.collectAsState()
+    val showFolderPicker by viewModel.showFolderPicker.collectAsState()
+    val folderPickerState by viewModel.folderPickerState.collectAsState()
     val context = LocalContext.current
-
-    val folderPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            viewModel.scanFolder(it, context)
-        }
-    }
 
     LaunchedEffect(state) {
         if (state is GiornalieraImportState.Success) {
@@ -88,7 +79,7 @@ fun GiornalieraImportSection(
                             .size(16.dp)
                     )
                     Text(
-                        text = "Importa giornaliere da una cartella contenente file CSV esportati dall'app. " +
+                        text = "Importa giornaliere da una cartella Google Drive contenente file CSV esportati dall'app. " +
                                 "Le giornaliere importate avranno stato INVIATA. " +
                                 "Personale, mezzi e attrezzature non presenti verranno creati automaticamente.",
                         style = MaterialTheme.typography.bodySmall,
@@ -107,7 +98,7 @@ fun GiornalieraImportSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedButton(
-                onClick = { folderPickerLauncher.launch(exportFolderUri) },
+                onClick = { viewModel.openFolderPicker() },
                 enabled = state !is GiornalieraImportState.Scanning &&
                         state !is GiornalieraImportState.Importing
             ) {
@@ -117,7 +108,7 @@ fun GiornalieraImportSection(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Seleziona cartella")
+                Text("Seleziona cartella Drive")
             }
 
             if (state is GiornalieraImportState.Scanning || state is GiornalieraImportState.Importing) {
@@ -134,6 +125,22 @@ fun GiornalieraImportSection(
         }
 
         Spacer(modifier = Modifier.height(8.dp))
+    }
+
+    // Drive folder picker dialog
+    if (showFolderPicker) {
+        GoogleDriveFolderPickerDialog(
+            state = folderPickerState,
+            onNavigateToFolder = { viewModel.navigateToFolder(it) },
+            onNavigateToBreadcrumb = { viewModel.navigateToBreadcrumb(it) },
+            onSelectFolder = { viewModel.selectAndScanFolder() },
+            onCreateFolder = { },
+            onShowCreateFolderDialog = { },
+            onHideCreateFolderDialog = { },
+            onDismiss = { viewModel.closeFolderPicker() },
+            footerHintText = "Verranno importati tutti i file CSV nella cartella selezionata",
+            showCreateFolderFab = false
+        )
     }
 
     // Confirmation dialog
