@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+ksp {
+    // Schema JSON di Room: serve per scrivere e testare le migrazioni
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.idroambiente.giornalieradicantiere"
     compileSdk = 35

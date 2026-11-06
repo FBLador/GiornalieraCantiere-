@@ -36,7 +36,7 @@ import com.idroambiente.giornalieradicantiere.database.entities.PersonaleGiornal
         AttrezzaturaGiornaliera::class
     ],
     version = 6,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

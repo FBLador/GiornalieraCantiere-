@@ -25,6 +25,7 @@ import com.idroambiente.giornalieradicantiere.database.repository.MezzoRepositor
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleGiornalieraRepository
 import com.idroambiente.giornalieradicantiere.database.repository.PersonaleRepository
 import com.idroambiente.giornalieradicantiere.data.preferences.StorageMode
+import com.idroambiente.giornalieradicantiere.database.GiornalieraStore
 import com.idroambiente.giornalieradicantiere.services.CsvGeneratorService
 import com.idroambiente.giornalieradicantiere.services.FileStorageService
 import com.idroambiente.giornalieradicantiere.services.GiornalieraPdfData
@@ -138,7 +139,8 @@ class GiornalieraWizardViewModel @Inject constructor(
     private val csvGeneratorService: CsvGeneratorService,
     private val fileStorageService: FileStorageService,
     private val preferencesRepository: PreferencesRepository,
-    private val networkUtils: NetworkUtils
+    private val networkUtils: NetworkUtils,
+    private val giornalieraStore: GiornalieraStore
 ) : ViewModel() {
 
     val cantiereId: Long = savedStateHandle.get<Long>("cantiereId") ?: 0L
@@ -522,19 +524,13 @@ class GiornalieraWizardViewModel @Inject constructor(
                     // Update existing giornaliera
                     val existingGiornaliera = _uiState.value.giornaliera
                     if (existingGiornaliera != null) {
-                        giornalieraRepository.update(
+                        giornalieraStore.salva(
                             existingGiornaliera.copy(
                                 note = _uiState.value.note.ifBlank { null },
                                 updatedAt = System.currentTimeMillis()
-                            )
+                            ),
+                            buildRighe()
                         )
-
-                        // Delete existing relations and re-insert
-                        personaleGiornalieraRepository.deleteByGiornalieraId(giornalieraId)
-                        mezzoGiornalieraRepository.deleteByGiornalieraId(giornalieraId)
-                        attrezzaturaGiornalieraRepository.deleteByGiornalieraId(giornalieraId)
-
-                        saveRelations(giornalieraId)
                     }
                 } else {
                     // Create new giornaliera
@@ -557,8 +553,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                         stato = StatoGiornaliera.BOZZA,
                         note = _uiState.value.note.ifBlank { null }
                     )
-                    val newGiornalieraId = giornalieraRepository.insert(giornaliera)
-                    saveRelations(newGiornalieraId)
+                    giornalieraStore.salva(giornaliera, buildRighe())
                 }
 
                 _uiState.update { it.copy(isSaving = false, saveCompleted = true) }
@@ -568,13 +563,14 @@ class GiornalieraWizardViewModel @Inject constructor(
         }
     }
 
-    private suspend fun saveRelations(giornalieraId: Long) {
-        // Salva solo il personale presente
-        val personaleGiornaliere = _uiState.value.personaleSelections
+    /** Righe da salvare, costruite dallo stato corrente del wizard. */
+    private fun buildRighe(): GiornalieraStore.Righe {
+        val state = _uiState.value
+        val personale = state.personaleSelections
             .filter { it.value.presente }
             .map { (personaleId, data) ->
                 PersonaleGiornaliera(
-                    giornalieraId = giornalieraId,
+                    giornalieraId = 0,
                     personaleId = personaleId,
                     presente = data.presente,
                     oreViaggioAndata = maxOf(0f, data.oreViaggioAndata),
@@ -585,31 +581,20 @@ class GiornalieraWizardViewModel @Inject constructor(
                     pernotto = data.pernotto
                 )
             }
-        personaleGiornalieraRepository.insertAll(personaleGiornaliere)
-
-        // Salva solo i mezzi utilizzati
-        val mezzoGiornaliere = _uiState.value.mezzoSelections
+        val mezzi = state.mezzoSelections
             .filter { it.value.utilizzato }
             .map { (mezzoId, data) ->
                 MezzoGiornaliera(
-                    giornalieraId = giornalieraId,
+                    giornalieraId = 0,
                     mezzoId = mezzoId,
                     kmAndata = maxOf(0f, data.kmAndata ?: 0f),
                     kmRitorno = maxOf(0f, data.kmRitorno ?: 0f)
                 )
             }
-        mezzoGiornalieraRepository.insertAll(mezzoGiornaliere)
-
-        // Salva solo le attrezzature utilizzate
-        val attrezzaturaGiornaliere = _uiState.value.attrezzaturaSelections
+        val attrezzature = state.attrezzaturaSelections
             .filter { it.value.utilizzata }
-            .map { (attrezzaturaId, _) ->
-                AttrezzaturaGiornaliera(
-                    giornalieraId = giornalieraId,
-                    attrezzaturaId = attrezzaturaId
-                )
-            }
-        attrezzaturaGiornalieraRepository.insertAll(attrezzaturaGiornaliere)
+            .map { (attrezzaturaId, _) -> AttrezzaturaGiornaliera(giornalieraId = 0, attrezzaturaId = attrezzaturaId) }
+        return GiornalieraStore.Righe(personale, mezzi, attrezzature)
     }
 
     fun sendGiornaliera(presaVisionePOS: Boolean = true) {
@@ -626,14 +611,7 @@ class GiornalieraWizardViewModel @Inject constructor(
                         presaVisionePOS = presaVisionePOS,
                         updatedAt = System.currentTimeMillis()
                     )
-                    giornalieraRepository.update(giornalieraToSend)
-
-                    // Delete existing relations and re-insert
-                    personaleGiornalieraRepository.deleteByGiornalieraId(giornalieraToSend.id)
-                    mezzoGiornalieraRepository.deleteByGiornalieraId(giornalieraToSend.id)
-                    attrezzaturaGiornalieraRepository.deleteByGiornalieraId(giornalieraToSend.id)
-
-                    saveRelations(giornalieraToSend.id)
+                    giornalieraStore.salva(giornalieraToSend, buildRighe())
                     _uiState.update { it.copy(isSaving = false, giornaliera = giornalieraToSend) }
                 } catch (e: Exception) {
                     _uiState.update {
@@ -686,10 +664,8 @@ class GiornalieraWizardViewModel @Inject constructor(
                     note = _uiState.value.note.ifBlank { null },
                     presaVisionePOS = presaVisionePOS
                 )
-                val newId = giornalieraRepository.insert(giornaliera)
-
-                // 2. Salva le relazioni
-                saveRelations(newId)
+                // 2. Salva giornaliera e righe in un'unica transazione
+                val newId = giornalieraStore.salva(giornaliera, buildRighe())
 
                 // 3. Ricarica l'entità salvata dal DB
                 val savedGiornaliera = giornalieraRepository.getById(newId)

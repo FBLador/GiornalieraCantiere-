@@ -3,6 +3,7 @@ package com.idroambiente.giornalieradicantiere.di
 import android.content.Context
 import androidx.room.Room
 import com.idroambiente.giornalieradicantiere.database.AppDatabase
+import com.idroambiente.giornalieradicantiere.database.Migrations
 import com.idroambiente.giornalieradicantiere.database.ExampleDao
 import com.idroambiente.giornalieradicantiere.database.dao.AttrezzaturaDao
 import com.idroambiente.giornalieradicantiere.database.dao.AttrezzaturaGiornalieraDao
@@ -33,7 +34,13 @@ object DatabaseModule {
             context.applicationContext,
             AppDatabase::class.java,
             "app_database"
-        ).fallbackToDestructiveMigration()
+        )
+            // Migrazioni vere: i dati sui telefoni NON vengono mai cancellati
+            // passando dalla v6 in su.
+            .addMigrations(*Migrations.ALL)
+            // Solo installazioni molto vecchie (prima della v6) vengono ricreate,
+            // come succedeva già prima di questa versione.
+            .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5)
             .build()
     }
 
