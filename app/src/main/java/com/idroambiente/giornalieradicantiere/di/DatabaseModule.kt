@@ -10,6 +10,8 @@ import com.idroambiente.giornalieradicantiere.database.dao.AttrezzaturaGiornalie
 import com.idroambiente.giornalieradicantiere.database.dao.CantiereDao
 import com.idroambiente.giornalieradicantiere.database.dao.CommessaDao
 import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraDao
+import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraModificaDao
+import com.idroambiente.giornalieradicantiere.database.dao.ReportEsportatoDao
 import com.idroambiente.giornalieradicantiere.database.dao.MezzoDao
 import com.idroambiente.giornalieradicantiere.database.dao.MezzoGiornalieraDao
 import com.idroambiente.giornalieradicantiere.database.dao.PersonaleDao
@@ -87,6 +89,16 @@ object DatabaseModule {
     @Provides
     fun provideAttrezzaturaDao(database: AppDatabase): AttrezzaturaDao {
         return database.attrezzaturaDao()
+    }
+
+    @Provides
+    fun provideGiornalieraModificaDao(database: AppDatabase): GiornalieraModificaDao {
+        return database.giornalieraModificaDao()
+    }
+
+    @Provides
+    fun provideReportEsportatoDao(database: AppDatabase): ReportEsportatoDao {
+        return database.reportEsportatoDao()
     }
 
     @Provides

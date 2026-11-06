@@ -57,6 +57,14 @@ class AttrezzaturaViewModel @Inject constructor(
 
             // Check for duplicate nome (case-insensitive)
             val existingAttrezzatura = attrezzaturaRepository.getByNome(trimmedNome)
+            if (existingAttrezzatura != null && !existingAttrezzatura.attivo) {
+                // Era stata eliminata: la riattiviamo con i dati nuovi
+                attrezzaturaRepository.update(
+                    existingAttrezzatura.copy(nome = trimmedNome, codiceArticolo = codiceArticolo.uppercase().trim(), attivo = true)
+                )
+                _showCreateDialog.value = false
+                return@launch
+            }
             if (existingAttrezzatura != null) {
                 _errorMessage.value = "Esiste già un'attrezzatura con questo nome"
                 return@launch
@@ -96,7 +104,7 @@ class AttrezzaturaViewModel @Inject constructor(
 
     fun deleteAttrezzatura(attrezzatura: Attrezzatura) {
         viewModelScope.launch {
-            attrezzaturaRepository.delete(attrezzatura)
+            attrezzaturaRepository.disattiva(attrezzatura.id)
         }
     }
 

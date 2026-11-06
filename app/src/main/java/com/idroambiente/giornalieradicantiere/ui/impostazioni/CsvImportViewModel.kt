@@ -154,19 +154,22 @@ class CsvImportViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 if (replaceExisting) {
-                    personaleRepository.deleteAll()
-                    mezzoRepository.deleteAll()
-                    attrezzaturaRepository.deleteAll()
+                    // Prima venivano cancellati: la cancellazione a cascata toglieva
+                    // persone e mezzi da TUTTE le giornaliere già compilate.
+                    // Ora vengono solo nascosti dalle liste.
+                    personaleRepository.disattivaTutti()
+                    mezzoRepository.disattivaTutti()
+                    attrezzaturaRepository.disattivaTutti()
                 }
 
                 if (result.personale.isNotEmpty()) {
-                    personaleRepository.insertAll(result.personale)
+                    personaleRepository.importa(result.personale)
                 }
                 if (result.mezzi.isNotEmpty()) {
-                    mezzoRepository.insertAll(result.mezzi)
+                    mezzoRepository.importa(result.mezzi)
                 }
                 if (result.attrezzature.isNotEmpty()) {
-                    attrezzaturaRepository.insertAll(result.attrezzature)
+                    attrezzaturaRepository.importa(result.attrezzature)
                 }
 
                 _state.value = CsvImportState.Success

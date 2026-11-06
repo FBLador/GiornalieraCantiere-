@@ -7,6 +7,25 @@ import kotlinx.coroutines.flow.Flow
 class MezzoRepository(private val mezzoDao: MezzoDao) {
     fun getAll(): Flow<List<Mezzo>> = mezzoDao.getAll()
 
+    fun getAllIncludingInactive(): Flow<List<Mezzo>> = mezzoDao.getAllIncludingInactive()
+
+    /** "Elimina" dalle liste: il mezzo resta nelle giornaliere già compilate. */
+    suspend fun disattiva(id: Long) = mezzoDao.disattiva(id)
+
+    suspend fun disattivaTutti() = mezzoDao.disattivaTutti()
+
+    /** Inserisce i mezzi; se la targa esiste già (anche eliminata) lo aggiorna e lo riattiva. */
+    suspend fun importa(mezzi: List<Mezzo>) {
+        mezzi.forEach { m ->
+            val esistente = mezzoDao.getByTarga(m.targa)
+            if (esistente != null) {
+                mezzoDao.update(m.copy(id = esistente.id, attivo = true))
+            } else {
+                mezzoDao.insert(m.copy(id = 0, attivo = true))
+            }
+        }
+    }
+
     suspend fun getById(id: Long): Mezzo? = mezzoDao.getById(id)
 
     suspend fun getByIds(ids: List<Long>): List<Mezzo> = mezzoDao.getByIds(ids)

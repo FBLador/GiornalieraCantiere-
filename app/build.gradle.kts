@@ -19,8 +19,8 @@ android {
         applicationId = "com.idroambiente.giornalieradicantiere"
         minSdk = 30
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.1"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -44,6 +44,27 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    testOptions {
+        unitTests {
+            // Robolectric: test su JVM con risorse Android (database, font, schermate)
+            isIncludeAndroidResources = true
+            all { test ->
+                test.maxHeapSize = "3g"
+                // Facoltativo: mirror di Maven Central per scaricare gli SDK di Robolectric
+                (project.findProperty("robolectricRepoUrl") as String?)?.let {
+                    test.systemProperty("robolectric.dependency.repo.url", it)
+                }
+                // Gli screenshot vengono scritti in app/build/screenshots
+                test.systemProperty("roborazzi.test.record", "true")
+                test.systemProperty("roborazzi.record.filePathStrategy", "relativePathFromRoborazziContextOutputDirectory")
+            }
+        }
+    }
+    sourceSets {
+        // Gli schema JSON di Room servono al test delle migrazioni (Robolectric legge gli
+        // assets della variante debug). Non finiscono nell'APK di rilascio.
+        getByName("debug").assets.srcDirs(files("$projectDir/schemas"))
     }
     packaging {
         resources {
@@ -103,6 +124,16 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

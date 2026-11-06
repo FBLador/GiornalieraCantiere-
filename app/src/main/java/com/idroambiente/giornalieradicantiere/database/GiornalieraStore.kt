@@ -3,6 +3,7 @@ package com.idroambiente.giornalieradicantiere.database
 import androidx.room.withTransaction
 import com.idroambiente.giornalieradicantiere.database.entities.AttrezzaturaGiornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
+import com.idroambiente.giornalieradicantiere.database.entities.GiornalieraModifica
 import com.idroambiente.giornalieradicantiere.database.entities.MezzoGiornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.PersonaleGiornaliera
 import javax.inject.Inject
@@ -39,6 +40,22 @@ class GiornalieraStore @Inject constructor(
         }
         sostituisciRighe(id, righe)
         id
+    }
+
+    /**
+     * Registra una modifica dopo l'invio: dati nuovi, righe nuove e voce di storico,
+     * tutto insieme. Si chiama SOLO dopo che PDF e CSV sono stati sostituiti:
+     * se qualcosa va storto prima, il database resta uguale al file inviato.
+     */
+    suspend fun applicaRevisione(
+        giornaliera: Giornaliera,
+        righe: Righe,
+        modifica: GiornalieraModifica
+    ) = db.withTransaction {
+        require(giornaliera.id != 0L) { "La giornaliera deve esistere" }
+        db.giornalieraDao().update(giornaliera)
+        sostituisciRighe(giornaliera.id, righe)
+        db.giornalieraModificaDao().insert(modifica.copy(id = 0, giornalieraId = giornaliera.id))
     }
 
     private suspend fun sostituisciRighe(giornalieraId: Long, righe: Righe) {

@@ -11,8 +11,18 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AttrezzaturaDao {
-    @Query("SELECT * FROM attrezzatura ORDER BY nome ASC")
+    /** Solo le attrezzature attive (quelle eliminate restano nelle giornaliere vecchie). */
+    @Query("SELECT * FROM attrezzatura WHERE attivo = 1 ORDER BY nome ASC")
     fun getAll(): Flow<List<Attrezzatura>>
+
+    @Query("SELECT * FROM attrezzatura ORDER BY nome ASC")
+    fun getAllIncludingInactive(): Flow<List<Attrezzatura>>
+
+    @Query("UPDATE attrezzatura SET attivo = 0 WHERE id = :id")
+    suspend fun disattiva(id: Long)
+
+    @Query("UPDATE attrezzatura SET attivo = 0")
+    suspend fun disattivaTutti()
 
     @Query("SELECT * FROM attrezzatura WHERE id = :id")
     suspend fun getById(id: Long): Attrezzatura?
@@ -20,7 +30,7 @@ interface AttrezzaturaDao {
     @Query("SELECT * FROM attrezzatura WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<Long>): List<Attrezzatura>
 
-    @Query("SELECT * FROM attrezzatura WHERE nome LIKE '%' || :query || '%' ORDER BY nome ASC")
+    @Query("SELECT * FROM attrezzatura WHERE attivo = 1 AND nome LIKE '%' || :query || '%' ORDER BY nome ASC")
     fun search(query: String): Flow<List<Attrezzatura>>
 
     @Query("SELECT * FROM attrezzatura WHERE LOWER(TRIM(nome)) = LOWER(TRIM(:nome))")

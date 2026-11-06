@@ -1,0 +1,881 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 7,
+    "identityHash": "d57de5611cedff80b33a0a4fa09f15dc",
+    "entities": [
+      {
+        "tableName": "example_table",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "commessa",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nome` INTEGER NOT NULL, `cliente` TEXT NOT NULL, `indirizzo` TEXT NOT NULL, `stato` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nome",
+            "columnName": "nome",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cliente",
+            "columnName": "cliente",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "indirizzo",
+            "columnName": "indirizzo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stato",
+            "columnName": "stato",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "cantiere",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `commessaId` INTEGER NOT NULL, `nome` TEXT NOT NULL, `indirizzo` TEXT NOT NULL, FOREIGN KEY(`commessaId`) REFERENCES `commessa`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commessaId",
+            "columnName": "commessaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nome",
+            "columnName": "nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "indirizzo",
+            "columnName": "indirizzo",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cantiere_commessaId",
+            "unique": false,
+            "columnNames": [
+              "commessaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cantiere_commessaId` ON `${TABLE_NAME}` (`commessaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "commessa",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "commessaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "giornaliera",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `cantiereId` INTEGER NOT NULL, `data` INTEGER NOT NULL, `stato` TEXT NOT NULL, `note` TEXT, `dpiIdonei` INTEGER NOT NULL, `presaVisionePOS` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `revisione` INTEGER NOT NULL DEFAULT 0, `modificataAt` INTEGER, `fileArchivio` TEXT, `pdfFileRef` TEXT, `pdfFileName` TEXT, `csvFileRef` TEXT, `csvFileName` TEXT, FOREIGN KEY(`cantiereId`) REFERENCES `cantiere`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cantiereId",
+            "columnName": "cantiereId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "data",
+            "columnName": "data",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stato",
+            "columnName": "stato",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dpiIdonei",
+            "columnName": "dpiIdonei",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "presaVisionePOS",
+            "columnName": "presaVisionePOS",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revisione",
+            "columnName": "revisione",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "modificataAt",
+            "columnName": "modificataAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "fileArchivio",
+            "columnName": "fileArchivio",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pdfFileRef",
+            "columnName": "pdfFileRef",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pdfFileName",
+            "columnName": "pdfFileName",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "csvFileRef",
+            "columnName": "csvFileRef",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "csvFileName",
+            "columnName": "csvFileName",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_giornaliera_cantiereId",
+            "unique": false,
+            "columnNames": [
+              "cantiereId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_giornaliera_cantiereId` ON `${TABLE_NAME}` (`cantiereId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "cantiere",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "cantiereId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "personale",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nome` TEXT NOT NULL, `cognome` TEXT NOT NULL, `attivo` INTEGER NOT NULL DEFAULT 1)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nome",
+            "columnName": "nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cognome",
+            "columnName": "cognome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attivo",
+            "columnName": "attivo",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "personale_giornaliera",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `giornalieraId` INTEGER NOT NULL, `personaleId` INTEGER NOT NULL, `presente` INTEGER NOT NULL, `oreViaggioAndata` REAL NOT NULL, `oreViaggioRitorno` REAL NOT NULL, `oreLavoro` REAL NOT NULL, `inizioTurno` INTEGER NOT NULL, `fineTurno` INTEGER NOT NULL, `pernotto` INTEGER NOT NULL, FOREIGN KEY(`giornalieraId`) REFERENCES `giornaliera`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`personaleId`) REFERENCES `personale`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "giornalieraId",
+            "columnName": "giornalieraId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "personaleId",
+            "columnName": "personaleId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "presente",
+            "columnName": "presente",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oreViaggioAndata",
+            "columnName": "oreViaggioAndata",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oreViaggioRitorno",
+            "columnName": "oreViaggioRitorno",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "oreLavoro",
+            "columnName": "oreLavoro",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "inizioTurno",
+            "columnName": "inizioTurno",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fineTurno",
+            "columnName": "fineTurno",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pernotto",
+            "columnName": "pernotto",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_personale_giornaliera_giornalieraId",
+            "unique": false,
+            "columnNames": [
+              "giornalieraId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_personale_giornaliera_giornalieraId` ON `${TABLE_NAME}` (`giornalieraId`)"
+          },
+          {
+            "name": "index_personale_giornaliera_personaleId",
+            "unique": false,
+            "columnNames": [
+              "personaleId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_personale_giornaliera_personaleId` ON `${TABLE_NAME}` (`personaleId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "giornaliera",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "giornalieraId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "personale",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "personaleId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "mezzo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `targa` TEXT NOT NULL, `nome` TEXT NOT NULL, `codiceArticoloKm` TEXT NOT NULL, `codiceArticoloGiorni` TEXT NOT NULL, `attivo` INTEGER NOT NULL DEFAULT 1)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targa",
+            "columnName": "targa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nome",
+            "columnName": "nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codiceArticoloKm",
+            "columnName": "codiceArticoloKm",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codiceArticoloGiorni",
+            "columnName": "codiceArticoloGiorni",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attivo",
+            "columnName": "attivo",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "mezzo_giornaliera",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `giornalieraId` INTEGER NOT NULL, `mezzoId` INTEGER NOT NULL, `kmAndata` REAL NOT NULL, `kmRitorno` REAL NOT NULL, FOREIGN KEY(`giornalieraId`) REFERENCES `giornaliera`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`mezzoId`) REFERENCES `mezzo`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "giornalieraId",
+            "columnName": "giornalieraId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mezzoId",
+            "columnName": "mezzoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kmAndata",
+            "columnName": "kmAndata",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kmRitorno",
+            "columnName": "kmRitorno",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_mezzo_giornaliera_giornalieraId",
+            "unique": false,
+            "columnNames": [
+              "giornalieraId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mezzo_giornaliera_giornalieraId` ON `${TABLE_NAME}` (`giornalieraId`)"
+          },
+          {
+            "name": "index_mezzo_giornaliera_mezzoId",
+            "unique": false,
+            "columnNames": [
+              "mezzoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_mezzo_giornaliera_mezzoId` ON `${TABLE_NAME}` (`mezzoId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "giornaliera",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "giornalieraId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "mezzo",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "mezzoId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "attrezzatura",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `nome` TEXT NOT NULL, `codiceArticolo` TEXT NOT NULL, `attivo` INTEGER NOT NULL DEFAULT 1)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nome",
+            "columnName": "nome",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codiceArticolo",
+            "columnName": "codiceArticolo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attivo",
+            "columnName": "attivo",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "attrezzatura_giornaliera",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`giornalieraId` INTEGER NOT NULL, `attrezzaturaId` INTEGER NOT NULL, PRIMARY KEY(`giornalieraId`, `attrezzaturaId`), FOREIGN KEY(`giornalieraId`) REFERENCES `giornaliera`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`attrezzaturaId`) REFERENCES `attrezzatura`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "giornalieraId",
+            "columnName": "giornalieraId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attrezzaturaId",
+            "columnName": "attrezzaturaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "giornalieraId",
+            "attrezzaturaId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_attrezzatura_giornaliera_giornalieraId",
+            "unique": false,
+            "columnNames": [
+              "giornalieraId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_attrezzatura_giornaliera_giornalieraId` ON `${TABLE_NAME}` (`giornalieraId`)"
+          },
+          {
+            "name": "index_attrezzatura_giornaliera_attrezzaturaId",
+            "unique": false,
+            "columnNames": [
+              "attrezzaturaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_attrezzatura_giornaliera_attrezzaturaId` ON `${TABLE_NAME}` (`attrezzaturaId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "giornaliera",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "giornalieraId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "attrezzatura",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "attrezzaturaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "giornaliera_modifica",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `giornalieraId` INTEGER NOT NULL, `revisione` INTEGER NOT NULL, `modificataAt` INTEGER NOT NULL, `motivo` TEXT NOT NULL, `dataPrecedente` INTEGER, `dataNuova` INTEGER NOT NULL, FOREIGN KEY(`giornalieraId`) REFERENCES `giornaliera`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "giornalieraId",
+            "columnName": "giornalieraId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "revisione",
+            "columnName": "revisione",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modificataAt",
+            "columnName": "modificataAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivo",
+            "columnName": "motivo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dataPrecedente",
+            "columnName": "dataPrecedente",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dataNuova",
+            "columnName": "dataNuova",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_giornaliera_modifica_giornalieraId",
+            "unique": false,
+            "columnNames": [
+              "giornalieraId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_giornaliera_modifica_giornalieraId` ON `${TABLE_NAME}` (`giornalieraId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "giornaliera",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "giornalieraId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "report_esportato",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `commessaId` INTEGER NOT NULL, `startDate` INTEGER, `endDate` INTEGER, `archivio` TEXT NOT NULL, `pdfFileName` TEXT NOT NULL, `pdfFileRef` TEXT, `csvFileName` TEXT, `csvFileRef` TEXT, `exportedAt` INTEGER NOT NULL, `daAggiornare` INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(`commessaId`) REFERENCES `commessa`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commessaId",
+            "columnName": "commessaId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startDate",
+            "columnName": "startDate",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "endDate",
+            "columnName": "endDate",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "archivio",
+            "columnName": "archivio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pdfFileName",
+            "columnName": "pdfFileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pdfFileRef",
+            "columnName": "pdfFileRef",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "csvFileName",
+            "columnName": "csvFileName",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "csvFileRef",
+            "columnName": "csvFileRef",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "exportedAt",
+            "columnName": "exportedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "daAggiornare",
+            "columnName": "daAggiornare",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_report_esportato_commessaId",
+            "unique": false,
+            "columnNames": [
+              "commessaId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_report_esportato_commessaId` ON `${TABLE_NAME}` (`commessaId`)"
+          },
+          {
+            "name": "index_report_esportato_commessaId_archivio_pdfFileName",
+            "unique": true,
+            "columnNames": [
+              "commessaId",
+              "archivio",
+              "pdfFileName"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_report_esportato_commessaId_archivio_pdfFileName` ON `${TABLE_NAME}` (`commessaId`, `archivio`, `pdfFileName`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "commessa",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "commessaId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd57de5611cedff80b33a0a4fa09f15dc')"
+    ]
+  }
+}

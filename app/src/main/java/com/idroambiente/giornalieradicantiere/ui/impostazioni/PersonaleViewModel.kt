@@ -63,6 +63,12 @@ class PersonaleViewModel @Inject constructor(
             
             // Check for duplicate nome+cognome (case-insensitive)
             val existingPersonale = personaleRepository.getByNomeECognome(trimmedNome, trimmedCognome)
+            if (existingPersonale != null && !existingPersonale.attivo) {
+                // Era stata eliminata: la riattiviamo invece di creare un doppione
+                personaleRepository.update(existingPersonale.copy(nome = trimmedNome, cognome = trimmedCognome, attivo = true))
+                _showCreateDialog.value = false
+                return@launch
+            }
             if (existingPersonale != null) {
                 // Set duplicate dialog state - don't close create dialog
                 _duplicateDialogState.value = DuplicateDialogState(
@@ -106,7 +112,7 @@ class PersonaleViewModel @Inject constructor(
 
     fun deletePersonale(personale: Personale) {
         viewModelScope.launch {
-            personaleRepository.delete(personale)
+            personaleRepository.disattiva(personale.id)
         }
     }
 

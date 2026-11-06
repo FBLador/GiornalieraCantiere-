@@ -8,6 +8,8 @@ import com.idroambiente.giornalieradicantiere.database.dao.AttrezzaturaGiornalie
 import com.idroambiente.giornalieradicantiere.database.dao.CantiereDao
 import com.idroambiente.giornalieradicantiere.database.dao.CommessaDao
 import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraDao
+import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraModificaDao
+import com.idroambiente.giornalieradicantiere.database.dao.ReportEsportatoDao
 import com.idroambiente.giornalieradicantiere.database.dao.MezzoDao
 import com.idroambiente.giornalieradicantiere.database.dao.MezzoGiornalieraDao
 import com.idroambiente.giornalieradicantiere.database.dao.PersonaleDao
@@ -17,6 +19,8 @@ import com.idroambiente.giornalieradicantiere.database.entities.AttrezzaturaGior
 import com.idroambiente.giornalieradicantiere.database.entities.Cantiere
 import com.idroambiente.giornalieradicantiere.database.entities.Commessa
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
+import com.idroambiente.giornalieradicantiere.database.entities.GiornalieraModifica
+import com.idroambiente.giornalieradicantiere.database.entities.ReportEsportato
 import com.idroambiente.giornalieradicantiere.database.entities.Mezzo
 import com.idroambiente.giornalieradicantiere.database.entities.MezzoGiornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.Personale
@@ -33,9 +37,11 @@ import com.idroambiente.giornalieradicantiere.database.entities.PersonaleGiornal
         Mezzo::class,
         MezzoGiornaliera::class,
         Attrezzatura::class,
-        AttrezzaturaGiornaliera::class
+        AttrezzaturaGiornaliera::class,
+        GiornalieraModifica::class,
+        ReportEsportato::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -50,4 +56,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun mezzoGiornalieraDao(): MezzoGiornalieraDao
     abstract fun attrezzaturaDao(): AttrezzaturaDao
     abstract fun attrezzaturaGiornalieraDao(): AttrezzaturaGiornalieraDao
+    abstract fun giornalieraModificaDao(): GiornalieraModificaDao
+    abstract fun reportEsportatoDao(): ReportEsportatoDao
 }

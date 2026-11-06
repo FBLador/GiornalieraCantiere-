@@ -57,6 +57,19 @@ class MezzoViewModel @Inject constructor(
 
             // Check for duplicate targa
             val existingMezzo = mezzoRepository.getByTarga(trimmedTarga)
+            if (existingMezzo != null && !existingMezzo.attivo) {
+                // Era stato eliminato: lo riattiviamo con i dati nuovi
+                mezzoRepository.update(
+                    existingMezzo.copy(
+                        nome = nome.trim(),
+                        codiceArticoloKm = codiceArticoloKm.uppercase().trim(),
+                        codiceArticoloGiorni = codiceArticoloGiorni.uppercase().trim(),
+                        attivo = true
+                    )
+                )
+                _showCreateDialog.value = false
+                return@launch
+            }
             if (existingMezzo != null) {
                 _errorMessage.value = "Esiste già un mezzo con questa targa"
                 return@launch
@@ -100,7 +113,7 @@ class MezzoViewModel @Inject constructor(
 
     fun deleteMezzo(mezzo: Mezzo) {
         viewModelScope.launch {
-            mezzoRepository.delete(mezzo)
+            mezzoRepository.disattiva(mezzo.id)
         }
     }
 

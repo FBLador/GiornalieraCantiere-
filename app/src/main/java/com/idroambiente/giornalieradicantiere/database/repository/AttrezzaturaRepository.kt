@@ -7,6 +7,25 @@ import kotlinx.coroutines.flow.Flow
 class AttrezzaturaRepository(private val attrezzaturaDao: AttrezzaturaDao) {
     fun getAll(): Flow<List<Attrezzatura>> = attrezzaturaDao.getAll()
 
+    fun getAllIncludingInactive(): Flow<List<Attrezzatura>> = attrezzaturaDao.getAllIncludingInactive()
+
+    /** "Elimina" dalle liste: l'attrezzatura resta nelle giornaliere già compilate. */
+    suspend fun disattiva(id: Long) = attrezzaturaDao.disattiva(id)
+
+    suspend fun disattivaTutti() = attrezzaturaDao.disattivaTutti()
+
+    /** Inserisce le attrezzature; se il nome esiste già (anche eliminata) la aggiorna e la riattiva. */
+    suspend fun importa(attrezzature: List<Attrezzatura>) {
+        attrezzature.forEach { a ->
+            val esistente = attrezzaturaDao.getByNome(a.nome)
+            if (esistente != null) {
+                attrezzaturaDao.update(a.copy(id = esistente.id, attivo = true))
+            } else {
+                attrezzaturaDao.insert(a.copy(id = 0, attivo = true))
+            }
+        }
+    }
+
     suspend fun getById(id: Long): Attrezzatura? = attrezzaturaDao.getById(id)
 
     suspend fun getByIds(ids: List<Long>): List<Attrezzatura> = attrezzaturaDao.getByIds(ids)
