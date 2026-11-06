@@ -2,10 +2,20 @@ package com.idroambiente.giornalieradicantiere.data.preferences
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 
 object PreferencesKeys {
+    // Aspetto: "SISTEMA", "CHIARO", "SCURO"
+    val TEMA = stringPreferencesKey("tema")
+
+    // PIN responsabile (modifica giornaliere inviate): solo impronta e sale, mai il PIN
+    val PIN_HASH = stringPreferencesKey("pin_hash")
+    val PIN_SALT = stringPreferencesKey("pin_salt")
+    val PIN_TENTATIVI_ERRATI = intPreferencesKey("pin_tentativi_errati")
+    val PIN_BLOCCATO_FINO_A = longPreferencesKey("pin_bloccato_fino_a")
+
     // Local folder settings (SAF)
     val EXPORT_FOLDER_URI = stringPreferencesKey("export_folder_uri")
     val EXPORT_FOLDER_NAME = stringPreferencesKey("export_folder_name")
@@ -64,3 +74,6 @@ enum class ExportBehavior(val value: String) {
         }
     }
 }
+
+/** Tema dell'app. */
+enum class TemaApp { SISTEMA, CHIARO, SCURO }

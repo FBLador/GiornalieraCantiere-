@@ -21,7 +21,9 @@ import com.idroambiente.giornalieradicantiere.services.CsvGeneratorService
 import com.idroambiente.giornalieradicantiere.services.FileStorageService
 import com.idroambiente.giornalieradicantiere.services.MezzoCsvData
 import com.idroambiente.giornalieradicantiere.services.MezzoRiepilogoItem
+import com.idroambiente.giornalieradicantiere.services.EsitoSostituzione
 import com.idroambiente.giornalieradicantiere.services.NetworkUtils
+import com.idroambiente.giornalieradicantiere.services.RiepilogoExporter
 import com.idroambiente.giornalieradicantiere.services.PdfGeneratorService
 import com.idroambiente.giornalieradicantiere.services.RiepilogoCommessaCsvData
 import com.idroambiente.giornalieradicantiere.services.RiepilogoCommessaPdfData
@@ -50,7 +52,10 @@ data class RiepilogoCommessaData(
 data class PdfExportResult(
     val fileName: String,
     val folderName: String?,
-    val webViewLink: String?
+    val webViewLink: String?,
+    /** true = esisteva già un report con questo nome ed è stato sostituito. */
+    val sovrascritto: Boolean = false,
+    val csvErrore: String? = null
 )
 
 @HiltViewModel
@@ -68,7 +73,8 @@ class RiepilogoCommessaViewModel @Inject constructor(
     private val csvGeneratorService: CsvGeneratorService,
     private val fileStorageService: FileStorageService,
     private val preferencesRepository: PreferencesRepository,
-    private val networkUtils: NetworkUtils
+    private val networkUtils: NetworkUtils,
+    private val riepilogoExporter: RiepilogoExporter
 ) : ViewModel() {
 
     val commessaId: Long = savedStateHandle.get<Long>("commessaId") ?: 0L
@@ -171,7 +177,7 @@ class RiepilogoCommessaViewModel @Inject constructor(
 
     fun exportPdf() {
         viewModelScope.launch {
-            val commessa = _commessa.value ?: return@launch
+            if (_commessa.value == null) return@launch
 
             // Validate configuration
             val validationError = validateExportConfiguration()
@@ -188,178 +194,22 @@ class RiepilogoCommessaViewModel @Inject constructor(
             }
 
             _pdfExporting.value = true
-
-            try {
-                val currentGiornaliere = giornaliere.value
-                val currentRiepilogo = _riepilogo.value
-                val currentStartDate = _startDate.value
-                val currentEndDate = _endDate.value
-
-                // Aggregare dettaglio mezzi: mezzoId -> (Set<giornalieraId>, sommaKm)
-                val mezzoAggregation = mutableMapOf<Long, Pair<MutableSet<Long>, Float>>()
-                // Aggregare dettaglio attrezzature: attrezzaturaId -> Set<giornalieraId>
-                val attrezzaturaAggregation = mutableMapOf<Long, MutableSet<Long>>()
-
-                for (g in currentGiornaliere) {
-                    val mezziGiornaliera = mezzoGiornalieraRepository.getByGiornalieraId(g.id).first()
-                    for (mg in mezziGiornaliera) {
-                        val (giorni, kmPrecedenti) = mezzoAggregation.getOrPut(mg.mezzoId) { mutableSetOf<Long>() to 0f }
-                        giorni.add(g.id)
-                        mezzoAggregation[mg.mezzoId] = giorni to (kmPrecedenti + mg.kmAndata + mg.kmRitorno)
-                    }
-
-                    val attrezzatureGiornaliera = attrezzaturaGiornalieraRepository.getByGiornalieraId(g.id).first()
-                    for (ag in attrezzatureGiornaliera) {
-                        attrezzaturaAggregation.getOrPut(ag.attrezzaturaId) { mutableSetOf() }.add(g.id)
-                    }
-                }
-
-                // Risolvere entità Mezzo
-                val mezziDettaglio = if (mezzoAggregation.isNotEmpty()) {
-                    val mezziEntities = mezzoRepository.getByIds(mezzoAggregation.keys.toList())
-                    mezziEntities.map { mezzo ->
-                        val entry = mezzoAggregation[mezzo.id]
-                        MezzoRiepilogoItem(
-                            nome = mezzo.nome,
-                            targa = mezzo.targa,
-                            codiceArticoloGiorni = mezzo.codiceArticoloGiorni,
-                            giorniUtilizzo = entry?.first?.size ?: 0,
-                            codiceArticoloKm = mezzo.codiceArticoloKm,
-                            totaleKm = entry?.second ?: 0f
-                        )
-                    }
-                } else emptyList()
-
-                // Risolvere entità Attrezzatura
-                val attrezzatureDettaglio = if (attrezzaturaAggregation.isNotEmpty()) {
-                    val attrEntities = attrezzaturaRepository.getByIds(attrezzaturaAggregation.keys.toList())
-                    attrEntities.map { attr ->
-                        AttrezzaturaRiepilogoItem(
-                            nome = attr.nome,
-                            codiceArticolo = attr.codiceArticolo,
-                            giorniUtilizzo = attrezzaturaAggregation[attr.id]?.size ?: 0
-                        )
-                    }
-                } else emptyList()
-
-                // Build PDF data
-                val pdfData = RiepilogoCommessaPdfData(
-                    commessaNome = commessa.nome.toString().padStart(7, '0'),
-                    cliente = commessa.cliente,
-                    indirizzo = commessa.indirizzo,
-                    stato = commessa.stato.name,
-                    totaleOreLavoro = currentRiepilogo.totaleOreLavoro,
-                    totaleOreViaggio = currentRiepilogo.totaleOreViaggio,
-                    totaleKm = currentRiepilogo.totaleKm,
-                    giornaliere = currentGiornaliere.map { g ->
-                        RiepilogoGiornalieraItem(
-                            data = g.data,
-                            stato = g.stato.name
-                        )
-                    },
-                    startDate = currentStartDate,
-                    endDate = currentEndDate,
-                    mezziDettaglio = mezziDettaglio,
-                    attrezzatureDettaglio = attrezzatureDettaglio
-                )
-
-                // Build CSV data
-                val codiceOreLavoro = preferencesRepository.codiceArticoloOreLavoro.first()
-                val codiceOreViaggio = preferencesRepository.codiceArticoloOreViaggio.first()
-
-                val csvData = RiepilogoCommessaCsvData(
-                    commessaNome = commessa.nome.toString().padStart(7, '0'),
-                    totaleOreLavoro = currentRiepilogo.totaleOreLavoro,
-                    totaleOreViaggio = currentRiepilogo.totaleOreViaggio,
-                    codiceArticoloOreLavoro = codiceOreLavoro,
-                    codiceArticoloOreViaggio = codiceOreViaggio,
-                    mezzi = mezziDettaglio.map { m ->
-                        MezzoCsvData(
-                            codiceArticoloGiorni = m.codiceArticoloGiorni,
-                            giorniUtilizzo = m.giorniUtilizzo,
-                            codiceArticoloKm = m.codiceArticoloKm,
-                            totaleKm = m.totaleKm
-                        )
-                    },
-                    attrezzature = attrezzatureDettaglio.map { a ->
-                        AttrezzaturaCsvData(
-                            codiceArticolo = a.codiceArticolo,
-                            giorniUtilizzo = a.giorniUtilizzo
-                        )
-                    },
-                    startDate = currentStartDate,
-                    endDate = currentEndDate
-                )
-
-                // Generate PDF
-                val pdfFile = pdfGeneratorService.generateRiepilogoCommessaPdf(pdfData)
-
-                val commessaNome = formatCommessaNome(commessa.nome)
-                val fileName = pdfGeneratorService.generateRiepilogoFileName(
-                    commessaNome.replace(Regex("[^a-zA-Z0-9\\-]"), "_"),
-                    currentStartDate,
-                    currentEndDate
-                )
-
-                // Generate CSV (best-effort, non bloccante)
-                val csvFile = try {
-                    csvGeneratorService.generateRiepilogoCommessaCsv(csvData)
-                } catch (_: Exception) {
-                    null
-                }
-                val csvFileName = try {
-                    csvGeneratorService.generateRiepilogoFileName(
-                        commessaNome.replace(Regex("[^a-zA-Z0-9\\-]"), "_"),
-                        currentStartDate,
-                        currentEndDate
+            // Il report viene sovrascritto se esiste già (niente doppioni) e annotato,
+            // così si aggiorna da solo quando si modifica una giornaliera.
+            riepilogoExporter.esporta(commessaId, _startDate.value, _endDate.value)
+                .onSuccess { esito ->
+                    _pdfExportSuccess.value = PdfExportResult(
+                        fileName = esito.fileName,
+                        folderName = esito.folderName,
+                        webViewLink = esito.webViewLink,
+                        sovrascritto = esito.esito == EsitoSostituzione.SOSTITUITO,
+                        csvErrore = esito.csvErrore
                     )
-                } catch (_: Exception) {
-                    null
                 }
-
-                // Save
-                val saveResult = fileStorageService.saveRiepilogoPdf(pdfFile, commessaNome, fileName)
-
-                when (saveResult) {
-                    is SaveResult.Success -> {
-                        // Salva anche il CSV (best-effort)
-                        if (csvFile != null && csvFileName != null) {
-                            try { fileStorageService.saveRiepilogoCsv(csvFile, commessaNome, csvFileName) } catch (_: Exception) {}
-                        }
-                        _pdfExporting.value = false
-                        _pdfExportSuccess.value = PdfExportResult(
-                            fileName = saveResult.fileName,
-                            folderName = saveResult.folderName,
-                            webViewLink = saveResult.webViewLink
-                        )
-                    }
-                    is SaveResult.Error -> {
-                        // Fallback: save to app storage
-                        val pdfFileFallback = pdfGeneratorService.generateRiepilogoCommessaPdf(pdfData)
-                        val localResult = fileStorageService.savePdfToAppStorage(pdfFileFallback)
-                        // Salva anche CSV nel fallback (best-effort)
-                        if (csvFile != null) {
-                            try { fileStorageService.saveCsvToAppStorage(csvFile) } catch (_: Exception) {}
-                        }
-                        _pdfExporting.value = false
-                        when (localResult) {
-                            is SaveResult.Success -> {
-                                _pdfExportSuccess.value = PdfExportResult(
-                                    fileName = localResult.fileName,
-                                    folderName = "memoria locale",
-                                    webViewLink = null
-                                )
-                            }
-                            is SaveResult.Error -> {
-                                _pdfExportError.value = localResult.message
-                            }
-                        }
-                    }
+                .onFailure { e ->
+                    _pdfExportError.value = e.message ?: "Errore durante la generazione del PDF"
                 }
-            } catch (e: Exception) {
-                _pdfExporting.value = false
-                _pdfExportError.value = e.message ?: "Errore durante la generazione del PDF"
-            }
+            _pdfExporting.value = false
         }
     }
 

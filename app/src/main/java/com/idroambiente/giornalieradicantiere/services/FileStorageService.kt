@@ -8,6 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import com.idroambiente.giornalieradicantiere.data.preferences.PreferencesRepository
 import com.idroambiente.giornalieradicantiere.data.preferences.StorageMode
+import com.idroambiente.giornalieradicantiere.database.entities.ArchivioFile
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -27,7 +28,10 @@ sealed class SaveResult {
         val uri: Uri?,
         val fileName: String,
         val folderName: String? = null,
-        val webViewLink: String? = null
+        val webViewLink: String? = null,
+        /** Riferimento per ritrovare il file: ID Drive, URI SAF o percorso locale. */
+        val ref: String? = null,
+        val archivio: ArchivioFile? = null
     ) : SaveResult()
     data class Error(val message: String) : SaveResult()
 }
@@ -39,8 +43,8 @@ class FileStorageService @Inject constructor(
     private val googleDriveService: GoogleDriveService
 ) {
     companion object {
-        private const val PDF_MIME_TYPE = "application/pdf"
-        private const val CSV_MIME_TYPE = "text/csv"
+        const val PDF_MIME_TYPE = "application/pdf"
+        const val CSV_MIME_TYPE = "text/csv"
     }
 
     /**
@@ -80,7 +84,9 @@ class FileStorageService @Inject constructor(
                             uri = null,
                             fileName = uploadResult.fileName,
                             folderName = uploadResult.folderName,
-                            webViewLink = uploadResult.webViewLink
+                            webViewLink = uploadResult.webViewLink,
+                            ref = uploadResult.fileId,
+                            archivio = ArchivioFile.DRIVE
                         )
                     },
                     onFailure = { error ->
@@ -154,7 +160,12 @@ class FileStorageService @Inject constructor(
             // Elimina il file dalla cache
             pdfFile.delete()
 
-            SaveResult.Success(uri = newFile.uri, fileName = newFile.name ?: pdfFile.name)
+            SaveResult.Success(
+                uri = newFile.uri,
+                fileName = newFile.name ?: pdfFile.name,
+                ref = newFile.uri.toString(),
+                archivio = ArchivioFile.LOCALE
+            )
         } catch (e: SecurityException) {
             SaveResult.Error("Permessi insufficienti per scrivere nella cartella")
         } catch (e: Exception) {
@@ -198,7 +209,9 @@ class FileStorageService @Inject constructor(
                             uri = null,
                             fileName = uploadResult.fileName,
                             folderName = uploadResult.folderName,
-                            webViewLink = uploadResult.webViewLink
+                            webViewLink = uploadResult.webViewLink,
+                            ref = uploadResult.fileId,
+                            archivio = ArchivioFile.DRIVE
                         )
                     },
                     onFailure = { error ->
@@ -263,7 +276,9 @@ class FileStorageService @Inject constructor(
                             uri = null,
                             fileName = uploadResult.fileName,
                             folderName = uploadResult.folderName,
-                            webViewLink = uploadResult.webViewLink
+                            webViewLink = uploadResult.webViewLink,
+                            ref = uploadResult.fileId,
+                            archivio = ArchivioFile.DRIVE
                         )
                     },
                     onFailure = { error ->
@@ -316,7 +331,12 @@ class FileStorageService @Inject constructor(
 
             csvFile.delete()
 
-            SaveResult.Success(uri = newFile.uri, fileName = newFile.name ?: csvFile.name)
+            SaveResult.Success(
+                uri = newFile.uri,
+                fileName = newFile.name ?: csvFile.name,
+                ref = newFile.uri.toString(),
+                archivio = ArchivioFile.LOCALE
+            )
         } catch (e: SecurityException) {
             SaveResult.Error("Permessi insufficienti per scrivere nella cartella")
         } catch (e: Exception) {
@@ -356,7 +376,9 @@ class FileStorageService @Inject constructor(
                             uri = null,
                             fileName = uploadResult.fileName,
                             folderName = uploadResult.folderName,
-                            webViewLink = uploadResult.webViewLink
+                            webViewLink = uploadResult.webViewLink,
+                            ref = uploadResult.fileId,
+                            archivio = ArchivioFile.DRIVE
                         )
                     },
                     onFailure = { error ->
@@ -389,9 +411,212 @@ class FileStorageService @Inject constructor(
 
             csvFile.delete()
 
-            SaveResult.Success(uri = null, fileName = destFile.name)
+            SaveResult.Success(uri = null, fileName = destFile.name, ref = destFile.absolutePath, archivio = ArchivioFile.APP)
         } catch (e: Exception) {
             SaveResult.Error("Errore durante il salvataggio CSV locale: ${e.message}")
+        }
+    }
+
+    // ───────────────────────── Sostituzione file (modifica giornaliere e report) ─────────────────────────
+
+    /** Sottocartella di destinazione dentro l'archivio. */
+    sealed interface Cartella {
+        data class Giornaliere(val commessaNome: String) : Cartella
+        data class Riepiloghi(val commessaNome: String) : Cartella
+    }
+
+    /** Archivio in uso adesso, in base alle impostazioni. */
+    suspend fun archivioCorrente(): ArchivioFile = when (preferencesRepository.storageMode.first()) {
+        StorageMode.GOOGLE_DRIVE -> ArchivioFile.DRIVE
+        StorageMode.LOCAL -> ArchivioFile.LOCALE
+    }
+
+    /**
+     * Sostituisce un file già inviato senza creare doppioni (vedi [FileReplacer]).
+     *
+     * @param knownRef riferimento salvato all'invio; viene usato solo se il file è nello stesso archivio
+     * @param oldName nome attuale del file (per ritrovare i file inviati prima di questa versione)
+     * @param newName nome che deve avere (diverso da oldName se è cambiata la data)
+     * @param fallbackName nome da usare se il file originale non si può modificare
+     */
+    suspend fun sostituisciFile(
+        file: File,
+        mimeType: String,
+        archivio: ArchivioFile,
+        knownRef: String?,
+        knownArchivio: ArchivioFile?,
+        oldName: String,
+        newName: String,
+        fallbackName: String,
+        cartella: Cartella
+    ): ReplaceResult = withContext(Dispatchers.IO) {
+        val ref = knownRef?.takeIf { knownArchivio == archivio }
+        val ops: RemoteOps = when (archivio) {
+            ArchivioFile.DRIVE -> {
+                val rootFolderId = preferencesRepository.googleDriveRootFolderId.first()
+                    ?: return@withContext ReplaceResult.Failed("Cartella Google Drive non configurata")
+                val folderId = when (cartella) {
+                    is Cartella.Giornaliere -> googleDriveService.getGiornaliereFolderId(cartella.commessaNome, rootFolderId)
+                    is Cartella.Riepiloghi -> googleDriveService.getRiepiloghiFolderId(cartella.commessaNome, rootFolderId)
+                }.getOrElse { return@withContext ReplaceResult.Failed(it.message ?: "Errore Google Drive") }
+                DriveOps(folderId, file, mimeType)
+            }
+            ArchivioFile.LOCALE -> {
+                val folderUri = preferencesRepository.exportFolderUri.first()
+                    ?: return@withContext ReplaceResult.Failed("Nessuna cartella di esportazione configurata")
+                SafOps(Uri.parse(folderUri), file, mimeType)
+            }
+            ArchivioFile.APP, ArchivioFile.CONDIVISO -> AppOps(appExportsDir(), file)
+        }
+        FileReplacer.replace(ref, oldName, newName, fallbackName, ops)
+    }
+
+    /**
+     * Scrive un file nel registro modifiche (cartella "Modifiche").
+     * @return dove è stato scritto, per mostrarlo all'utente
+     */
+    suspend fun scriviRegistro(fileName: String, contenuto: String): Result<String> = withContext(Dispatchers.IO) {
+        val tmp = File(context.cacheDir, fileName)
+        try {
+            tmp.writeText(contenuto, Charsets.UTF_8)
+            when (archivioCorrente()) {
+                ArchivioFile.DRIVE -> {
+                    val rootFolderId = preferencesRepository.googleDriveRootFolderId.first()
+                        ?: return@withContext Result.failure(Exception("Cartella Google Drive non configurata"))
+                    val folderId = googleDriveService.getModificheFolderId(rootFolderId).getOrThrow()
+                    googleDriveService.createFile(fileName, folderId, tmp, CSV_MIME_TYPE).getOrThrow()
+                    Result.success("Google Drive › Modifiche")
+                }
+                else -> {
+                    val folderUri = preferencesRepository.exportFolderUri.first()
+                    val tree = folderUri?.let { DocumentFile.fromTreeUri(context, Uri.parse(it)) }
+                    if (tree != null && tree.canWrite()) {
+                        val dir = tree.findFile("Modifiche")?.takeIf { it.isDirectory } ?: tree.createDirectory("Modifiche")
+                        val doc = dir?.createFile(CSV_MIME_TYPE, FileNaming.senzaEstensione(fileName))
+                            ?: throw Exception("Impossibile creare il file del registro")
+                        context.contentResolver.openOutputStream(doc.uri)?.use { out -> tmp.inputStream().use { it.copyTo(out) } }
+                        Result.success("${tree.name ?: "Cartella"} › Modifiche")
+                    } else {
+                        val dir = File(appExportsDir(), "Modifiche").apply { mkdirs() }
+                        tmp.copyTo(File(dir, fileName), overwrite = true)
+                        Result.success("Memoria dell'app › Modifiche")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    private fun appExportsDir(): File = File(context.getExternalFilesDir(null), "exports").apply { mkdirs() }
+
+    /** Google Drive: aggiorna lo stesso file (ID invariato) oppure lo crea nella cartella. */
+    private inner class DriveOps(
+        private val folderId: String,
+        private val file: File,
+        private val mimeType: String
+    ) : RemoteOps {
+        override suspend fun update(ref: String, newName: String): OpResult =
+            googleDriveService.updateFile(ref, newName, file, mimeType).fold(
+                onSuccess = { OpResult.Ok(it.fileId, it.fileName, it.webViewLink) },
+                onFailure = { it.toOpResult() }
+            )
+
+        override suspend fun findByName(name: String): FindResult =
+            googleDriveService.findFilesByName(name, folderId).fold(
+                onSuccess = { FindResult.Found(it) },
+                onFailure = { FindResult.Failed(it.message ?: "Errore Google Drive") }
+            )
+
+        override suspend fun create(name: String): OpResult =
+            googleDriveService.createFile(name, folderId, file, mimeType).fold(
+                onSuccess = { OpResult.Ok(it.fileId, it.fileName, it.webViewLink) },
+                onFailure = { it.toOpResult() }
+            )
+
+        private fun Throwable.toOpResult(): OpResult = when ((this as? DriveHttpException)?.statusCode) {
+            404 -> OpResult.NotFound
+            403 -> OpResult.Forbidden
+            else -> OpResult.Failed(message ?: "Errore Google Drive")
+        }
+    }
+
+    /** Cartella scelta sul telefono (SAF): rinomina il documento e lo sovrascrive. */
+    private inner class SafOps(
+        private val folderUri: Uri,
+        private val file: File,
+        private val mimeType: String
+    ) : RemoteOps {
+        override suspend fun update(ref: String, newName: String): OpResult {
+            return try {
+                var uri = Uri.parse(ref)
+                val doc = DocumentFile.fromSingleUri(context, uri)
+                if (doc == null || !doc.exists()) return OpResult.NotFound
+                if (doc.name != newName) {
+                    uri = DocumentsContract.renameDocument(context.contentResolver, uri, newName)
+                        ?: return OpResult.Failed("Impossibile rinominare il file")
+                }
+                writeTo(uri)
+                OpResult.Ok(uri.toString(), DocumentFile.fromSingleUri(context, uri)?.name ?: newName)
+            } catch (e: SecurityException) {
+                OpResult.Forbidden
+            } catch (e: java.io.FileNotFoundException) {
+                OpResult.NotFound
+            } catch (e: Exception) {
+                OpResult.Failed(e.message ?: "Errore durante la scrittura")
+            }
+        }
+
+        override suspend fun findByName(name: String): FindResult = try {
+            val tree = DocumentFile.fromTreeUri(context, folderUri)
+            FindResult.Found(listOfNotNull(tree?.findFile(name)?.uri?.toString()))
+        } catch (e: Exception) {
+            FindResult.Failed(e.message ?: "Cartella non accessibile")
+        }
+
+        override suspend fun create(name: String): OpResult = try {
+            val tree = DocumentFile.fromTreeUri(context, folderUri)
+            val doc = tree?.createFile(mimeType, FileNaming.senzaEstensione(name))
+            if (doc == null) {
+                OpResult.Failed("Impossibile creare il file nella cartella")
+            } else {
+                writeTo(doc.uri)
+                OpResult.Ok(doc.uri.toString(), doc.name ?: name)
+            }
+        } catch (e: SecurityException) {
+            OpResult.Forbidden
+        } catch (e: Exception) {
+            OpResult.Failed(e.message ?: "Errore durante la scrittura")
+        }
+
+        private fun writeTo(uri: Uri) {
+            // "wt" = scrivi troncando: il file vecchio viene sostituito completamente
+            context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
+                file.inputStream().use { it.copyTo(out) }
+            } ?: throw java.io.FileNotFoundException("Impossibile aprire il file")
+        }
+    }
+
+    /** Cartella interna dell'app (fallback e modalità "Condividi"). */
+    private class AppOps(private val dir: File, private val file: File) : RemoteOps {
+        override suspend fun update(ref: String, newName: String): OpResult {
+            val current = File(ref)
+            if (!current.exists()) return OpResult.NotFound
+            val target = File(current.parentFile ?: dir, newName)
+            if (current != target) current.delete()
+            file.copyTo(target, overwrite = true)
+            return OpResult.Ok(target.absolutePath, target.name)
+        }
+
+        override suspend fun findByName(name: String): FindResult =
+            FindResult.Found(listOfNotNull(File(dir, name).takeIf { it.exists() }?.absolutePath))
+
+        override suspend fun create(name: String): OpResult {
+            val target = File(dir, name)
+            file.copyTo(target, overwrite = true)
+            return OpResult.Ok(target.absolutePath, target.name)
         }
     }
 
@@ -484,7 +709,7 @@ class FileStorageService @Inject constructor(
                 destFile
             )
 
-            SaveResult.Success(uri = uri, fileName = destFile.name)
+            SaveResult.Success(uri = uri, fileName = destFile.name, ref = destFile.absolutePath, archivio = ArchivioFile.APP)
         } catch (e: Exception) {
             SaveResult.Error("Errore durante il salvataggio locale: ${e.message}")
         }

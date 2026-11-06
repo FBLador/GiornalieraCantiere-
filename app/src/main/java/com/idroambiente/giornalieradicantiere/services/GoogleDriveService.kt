@@ -46,6 +46,9 @@ data class UploadResult(
     val webViewLink: String?
 )
 
+/** Errore HTTP di Google Drive con il suo codice (403 = permessi, 404 = non trovato). */
+class DriveHttpException(val statusCode: Int, message: String, cause: Throwable? = null) : Exception(message, cause)
+
 /**
  * Service for interacting with Google Drive API.
  * Handles folder management and file uploads with automatic
@@ -584,6 +587,124 @@ class GoogleDriveService @Inject constructor(
                 Result.failure(e)
             }
         }
+    }
+
+    // ───────────────────────── Sostituzione file (modifica giornaliere) ─────────────────────────
+
+    /** Cartella {Commessa}/Giornaliere, creata se manca. */
+    suspend fun getGiornaliereFolderId(commessaNome: String, rootFolderId: String): Result<String> {
+        val commessaFolderId = getOrCreateCommessaFolder(commessaNome, rootFolderId)
+            .getOrElse { return Result.failure(it) }
+        return getOrCreateSubfolder("Giornaliere", commessaFolderId)
+    }
+
+    /** Cartella {Commessa}/Riepiloghi, creata se manca. */
+    suspend fun getRiepiloghiFolderId(commessaNome: String, rootFolderId: String): Result<String> {
+        val commessaFolderId = getOrCreateCommessaFolder(commessaNome, rootFolderId)
+            .getOrElse { return Result.failure(it) }
+        return getOrCreateSubfolder("Riepiloghi", commessaFolderId)
+    }
+
+    /** Cartella Modifiche nella cartella principale: il registro delle modifiche per l'ufficio. */
+    suspend fun getModificheFolderId(rootFolderId: String): Result<String> =
+        getOrCreateSubfolder("Modifiche", rootFolderId)
+
+    /** File con quel nome nella cartella (non nel cestino), il più recente per primo. */
+    suspend fun findFilesByName(name: String, parentId: String): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            val driveService = getDriveService()
+                ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+            val query = "name = '${escapeQuery(name)}' and '${escapeQuery(parentId)}' in parents and trashed = false"
+            val result = driveService.files().list()
+                .setQ(query)
+                .setSpaces("drive")
+                .setFields("files(id, name, modifiedTime)")
+                .setOrderBy("modifiedTime desc")
+                .execute()
+            Result.success(result.files?.map { it.id } ?: emptyList())
+        } catch (e: GoogleJsonResponseException) {
+            Result.failure(DriveHttpException(e.statusCode, messaggioErrore(e.statusCode), e))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sostituisce il contenuto di un file esistente e, se serve, lo rinomina.
+     * L'ID e il link restano uguali; la versione precedente resta nella cronologia
+     * delle versioni di Drive (la segniamo "da conservare per sempre").
+     * In caso di errore HTTP restituisce [DriveHttpException] con il codice (403, 404...).
+     */
+    suspend fun updateFile(fileId: String, newName: String, file: File, mimeType: String): Result<UploadResult> =
+        withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+
+                // Best effort: conserva per sempre la versione che stiamo per sostituire
+                try {
+                    val head = driveService.files().get(fileId).setFields("headRevisionId").execute().headRevisionId
+                    if (head != null) {
+                        driveService.revisions().update(
+                            fileId,
+                            head,
+                            com.google.api.services.drive.model.Revision().setKeepForever(true)
+                        ).execute()
+                    }
+                } catch (e: GoogleJsonResponseException) {
+                    // 404/403 qui li gestisce l'update vero e proprio qui sotto
+                    if (e.statusCode == 404 || e.statusCode == 403) {
+                        return@withContext Result.failure(DriveHttpException(e.statusCode, messaggioErrore(e.statusCode), e))
+                    }
+                } catch (_: Exception) {
+                }
+
+                val metadata = DriveFile().apply { name = newName }
+                val updated = driveService.files().update(fileId, metadata, FileContent(mimeType, file))
+                    .setKeepRevisionForever(true)
+                    .setFields("id, name, webViewLink")
+                    .execute()
+                Result.success(UploadResult(updated.id, updated.name, "", updated.webViewLink))
+            } catch (e: GoogleJsonResponseException) {
+                Result.failure(DriveHttpException(e.statusCode, messaggioErrore(e.statusCode), e))
+            } catch (e: java.io.IOException) {
+                Result.failure(Exception("Errore di rete. Riprova.", e))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    /** Crea un file nuovo nella cartella indicata. */
+    suspend fun createFile(name: String, parentId: String, file: File, mimeType: String): Result<UploadResult> =
+        withContext(Dispatchers.IO) {
+            try {
+                val driveService = getDriveService()
+                    ?: return@withContext Result.failure(Exception("Non autenticato con Google"))
+                val metadata = DriveFile().apply {
+                    this.name = name
+                    parents = listOf(parentId)
+                }
+                val created = driveService.files().create(metadata, FileContent(mimeType, file))
+                    .setKeepRevisionForever(true)
+                    .setFields("id, name, webViewLink")
+                    .execute()
+                Result.success(UploadResult(created.id, created.name, "", created.webViewLink))
+            } catch (e: GoogleJsonResponseException) {
+                Result.failure(DriveHttpException(e.statusCode, messaggioErrore(e.statusCode), e))
+            } catch (e: java.io.IOException) {
+                Result.failure(Exception("Errore di rete. Riprova.", e))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
+    private fun escapeQuery(value: String): String = value.replace("\\", "\\\\").replace("'", "\\'")
+
+    private fun messaggioErrore(statusCode: Int): String = when (statusCode) {
+        404 -> "File o cartella non trovati su Google Drive."
+        403 -> "Permessi insufficienti su Google Drive."
+        507 -> "Spazio Google Drive esaurito."
+        else -> "Errore Google Drive ($statusCode). Riprova."
     }
 
     /**

@@ -113,7 +113,9 @@ data class GiornalieraPdfData(
     val mezziList: List<MezzoWithData>,
     val attrezzatureList: List<Attrezzatura>,
     val riepilogo: PdfRiepilogoData,
-    val userName: String? = null
+    val userName: String? = null,
+    /** Motivo dell'ultima modifica dopo l'invio (solo se giornaliera.revisione > 0). */
+    val motivoModifica: String? = null
 )
 
 @Singleton
@@ -250,9 +252,9 @@ class PdfGeneratorService @Inject constructor(
             state.yPosition += SECTION_SPACING
         }
 
-        // Footer (DPI, POS, timestamp)
-        state.checkNewPage(60f)
-        drawFooter(state.canvas!!, data.giornaliera, state.yPosition)
+        // Footer (revisione, POS, timestamp)
+        state.checkNewPage(if (data.giornaliera.revisione > 0) 130f else 60f)
+        drawFooter(state.canvas!!, data.giornaliera, data.motivoModifica, state.yPosition)
 
         // Finalizza
         state.finalize()
@@ -516,12 +518,37 @@ class PdfGeneratorService @Inject constructor(
         return y
     }
 
-    private fun drawFooter(canvas: Canvas, giornaliera: Giornaliera, startY: Float): Float {
+    private fun drawFooter(canvas: Canvas, giornaliera: Giornaliera, motivoModifica: String?, startY: Float): Float {
         var y = startY
 
         // Linea separatrice
         canvas.drawLine(MARGIN, y, PAGE_WIDTH - MARGIN, y, tablePaint)
         y += 15f
+
+        // Revisione: la giornaliera è stata modificata dopo il primo invio
+        if (giornaliera.revisione > 0) {
+            val quando = giornaliera.modificataAt?.let {
+                " · modificata il " + SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.ITALY).format(Date(it))
+            } ?: ""
+            canvas.drawText("Rev. ${giornaliera.revisione}$quando", MARGIN, y + 10f, headerPaint)
+            y += LINE_HEIGHT
+            if (!motivoModifica.isNullOrBlank()) {
+                val maxWidth = PAGE_WIDTH - 2 * MARGIN
+                var riga = "Motivo:"
+                for (parola in motivoModifica.trim().split(Regex("\\s+"))) {
+                    val prova = "$riga $parola"
+                    if (smallTextPaint.measureText(prova) > maxWidth) {
+                        canvas.drawText(riga, MARGIN, y + 10f, smallTextPaint)
+                        y += LINE_HEIGHT - 4f
+                        riga = parola
+                    } else {
+                        riga = prova
+                    }
+                }
+                canvas.drawText(riga, MARGIN, y + 10f, smallTextPaint)
+                y += LINE_HEIGHT
+            }
+        }
 
         // Presa visione POS
         val posSymbol = if (giornaliera.presaVisionePOS) "☑" else "☐"

@@ -17,6 +17,14 @@ class PreferencesRepository @Inject constructor(
     /**
      * Modalità di salvataggio corrente: LOCAL o GOOGLE_DRIVE
      */
+    val tema: Flow<TemaApp> = dataStore.data.map { preferences ->
+        preferences[PreferencesKeys.TEMA]?.let { runCatching { TemaApp.valueOf(it) }.getOrNull() } ?: TemaApp.SISTEMA
+    }
+
+    suspend fun setTema(tema: TemaApp) {
+        dataStore.edit { it[PreferencesKeys.TEMA] = tema.name }
+    }
+
     val storageMode: Flow<StorageMode> = dataStore.data.map { preferences ->
         val value = preferences[PreferencesKeys.STORAGE_MODE] ?: StorageMode.LOCAL.value
         StorageMode.fromValue(value)
