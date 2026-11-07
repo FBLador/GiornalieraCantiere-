@@ -2,6 +2,7 @@ package com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -157,6 +158,7 @@ data class WizardAzioni(
     val usaDatiPrecedenti: () -> Unit = {},
     val avantiDaMezzi: () -> Unit = {},
     val toggleAttrezzatura: (Long) -> Unit = {},
+    val avantiARiepilogo: () -> Unit = {},
     val note: (String) -> Unit = {},
     val motivo: (String) -> Unit = {},
     val cambiaData: (Long) -> Unit = {},
@@ -187,6 +189,8 @@ fun GiornalieraWizardScreen(
     val toast = rememberToastState()
 
     LaunchedEffect(state.chiudi) { if (state.chiudi) onNavigateBack() }
+    // Indietro di sistema: in compilazione/modifica chiede conferma (i fogli aperti hanno la precedenza)
+    BackHandler(enabled = !state.inviando) { viewModel.esci() }
     LaunchedEffect(state.toast) { state.toast?.let { toast.show(it); viewModel.toastMostrato() } }
     LaunchedEffect(state.condividi) {
         state.condividi?.let { runCatching { context.startActivity(it) }; viewModel.condivisioneAvviata() }
@@ -226,6 +230,7 @@ fun GiornalieraWizardScreen(
             usaDatiPrecedenti = vm::usaDatiPrecedenti,
             avantiDaMezzi = vm::avantiDaMezzi,
             toggleAttrezzatura = vm::toggleAttrezzatura,
+            avantiARiepilogo = vm::avantiARiepilogo,
             note = vm::setNote,
             motivo = vm::setMotivo,
             cambiaData = vm::cambiaData,
@@ -517,7 +522,7 @@ private fun WizardBottomBar(barra: BarraWizard, azioni: WizardAzioni) {
                     AzioneCta.AVANTI_DA_PERSONALE -> azioni.avantiDaPersonale()
                     AzioneCta.VAI_DATI_MEZZI -> azioni.vaiADatiMezzi()
                     AzioneCta.AVANTI_DA_MEZZI -> azioni.avantiDaMezzi()
-                    AzioneCta.AVANTI_A_RIEPILOGO -> azioni.vaiAStep(3)
+                    AzioneCta.AVANTI_A_RIEPILOGO -> azioni.avantiARiepilogo()
                     AzioneCta.INVIA -> azioni.invia()
                 }
             },

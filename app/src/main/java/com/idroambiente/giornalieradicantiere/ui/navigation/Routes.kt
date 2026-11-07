@@ -11,6 +11,9 @@ object Routes {
     const val ATTREZZATURA_LIST = "attrezzatura_list"
     const val LISTE_GESTIONE = "liste_gestione"
     const val RIEPILOGO_COMMESSA = "riepilogo_commessa/{commessaId}"
+    const val IMPORTA_DATI = "importa_dati/{anagrafiche}"
+
+    fun importaDati(anagrafiche: Boolean) = "importa_dati/$anagrafiche"
 
     fun giornaliereList(commessaId: Long) = "giornaliere_list/$commessaId"
 

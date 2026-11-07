@@ -22,6 +22,7 @@ import com.idroambiente.giornalieradicantiere.ui.giornaliere.GiornaliereScreen
 import com.idroambiente.giornalieradicantiere.ui.giornaliere.wizard.GiornalieraWizardScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.AttrezzaturaListScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.ImpostazioniScreen
+import com.idroambiente.giornalieradicantiere.ui.impostazioni.ImportaDatiScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.ListeGestioneScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.MezzoListScreen
 import com.idroambiente.giornalieradicantiere.ui.impostazioni.PersonaleListScreen
@@ -148,7 +149,20 @@ fun AppNavHost(
                 onNavigateBack = { safePopBackStack() },
                 onNavigateToListeGestione = {
                     navController.navigate(Routes.LISTE_GESTIONE)
+                },
+                onNavigateToImporta = { anagrafiche ->
+                    navController.navigate(Routes.importaDati(anagrafiche))
                 }
+            )
+        }
+
+        composable(
+            route = Routes.IMPORTA_DATI,
+            arguments = listOf(navArgument("anagrafiche") { type = NavType.BoolType })
+        ) { entry ->
+            ImportaDatiScreen(
+                anagrafiche = entry.arguments?.getBoolean("anagrafiche") ?: true,
+                onNavigateBack = { safePopBackStack() }
             )
         }
 

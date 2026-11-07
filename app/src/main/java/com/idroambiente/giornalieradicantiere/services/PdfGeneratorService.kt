@@ -118,8 +118,9 @@ data class GiornalieraPdfData(
     val motivoModifica: String? = null
 )
 
+/** "open" solo per poterlo sostituire nei test (il motore PDF di Android non gira su JVM). */
 @Singleton
-class PdfGeneratorService @Inject constructor(
+open class PdfGeneratorService @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     companion object {
@@ -203,7 +204,8 @@ class PdfGeneratorService @Inject constructor(
             return canvas!!
         }
 
-        fun finalize() {
+        // Non chiamarla "finalize": in Kotlin/Java sarebbe il finalizzatore richiamato dal garbage collector
+        fun finishCurrentPage() {
             currentPage?.let { document.finishPage(it) }
         }
     }
@@ -212,7 +214,7 @@ class PdfGeneratorService @Inject constructor(
      * Genera il PDF per una giornaliera e lo salva nella cache dell'app
      * @return Il file PDF generato
      */
-    suspend fun generateGiornalieraPdf(data: GiornalieraPdfData): File = withContext(Dispatchers.IO) {
+    open suspend fun generateGiornalieraPdf(data: GiornalieraPdfData): File = withContext(Dispatchers.IO) {
         val state = PdfState(PdfDocument())
         
         state.startNewPage()
@@ -257,7 +259,7 @@ class PdfGeneratorService @Inject constructor(
         drawFooter(state.canvas!!, data.giornaliera, data.motivoModifica, state.yPosition)
 
         // Finalizza
-        state.finalize()
+        state.finishCurrentPage()
 
         // Salva il file
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.ITALY)
@@ -628,7 +630,7 @@ class PdfGeneratorService @Inject constructor(
      * Genera il PDF di riepilogo commessa e lo salva nella cache dell'app
      * @return Il file PDF generato
      */
-    suspend fun generateRiepilogoCommessaPdf(data: RiepilogoCommessaPdfData): File = withContext(Dispatchers.IO) {
+    open suspend fun generateRiepilogoCommessaPdf(data: RiepilogoCommessaPdfData): File = withContext(Dispatchers.IO) {
         val state = PdfState(PdfDocument())
 
         state.startNewPage()
@@ -670,7 +672,7 @@ class PdfGeneratorService @Inject constructor(
         drawRiepilogoFooter(state.canvas!!, state.yPosition)
 
         // Finalizza
-        state.finalize()
+        state.finishCurrentPage()
 
         // Genera il nome file
         val sanitizedCommessa = formatCommessaNome(data.commessaNome)

@@ -330,12 +330,18 @@ class GiornalieraWizardViewModel @Inject constructor(
 
     // ───────────────────────── Navigazione tra i passi ─────────────────────────
 
+    /** Schede in alto e "Modifica" nel riepilogo: in una giornaliera nuova solo i passi già visti. */
     fun vaiAStep(n: Int) {
         val s = _uiState.value
         if (s.modalita == ModalitaWizard.DETTAGLIO) return
-        if (n > s.maxStep + (if (s.modalita == ModalitaWizard.NUOVA) 0 else 3)) return
-        aggiorna { it.copy(currentStep = n, maxStep = maxOf(it.maxStep, n)) }
+        if (s.modalita == ModalitaWizard.NUOVA && n > s.maxStep) return
+        aggiorna { it.copy(currentStep = n) }
     }
+
+    /** Avanzamento con il pulsante principale (dopo i controlli del passo). */
+    private fun avanzaA(n: Int) = aggiorna { it.copy(currentStep = n, maxStep = maxOf(it.maxStep, n)) }
+
+    fun avantiARiepilogo() = avanzaA(3)
 
     // ───────────────────────── Persone ─────────────────────────
 
@@ -401,7 +407,7 @@ class GiornalieraWizardViewModel @Inject constructor(
         if (s.personaleSelections.isEmpty()) return toast("Tocca almeno una persona")
         val mancano = s.personaleSelections.filterValues { !it.compilato() }.keys
         if (mancano.isNotEmpty()) return toast("Mancano i dati di " + mancano.joinToString(", ") { nomePersona(it) })
-        vaiAStep(1)
+        avanzaA(1)
     }
 
     // ───────────────────────── Mezzi ─────────────────────────
@@ -464,7 +470,7 @@ class GiornalieraWizardViewModel @Inject constructor(
         val mancano = s.mezzoSelections.filterValues { !it.compilato() }.keys
         if (s.mezzoSelections.isEmpty()) return toast("Seleziona almeno un mezzo")
         if (mancano.isNotEmpty()) return toast("Mancano i km di " + mancano.joinToString(", ") { nomeMezzo(it) })
-        vaiAStep(2)
+        avanzaA(2)
     }
 
     // ───────────────────────── Attrezzature e riepilogo ─────────────────────────

@@ -117,7 +117,11 @@ object ReminderNotificationHelper {
             .setContentIntent(contentIntent)
             .build()
 
-        NotificationManagerCompat.from(context).notify(notificationId, notification)
+        // Da Android 13 l'utente può negare il permesso delle notifiche: in quel caso non mostriamo nulla
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+        } catch (_: SecurityException) {
+        }
     }
 
     private fun createNotificationChannelIfNeeded(context: Context) {
