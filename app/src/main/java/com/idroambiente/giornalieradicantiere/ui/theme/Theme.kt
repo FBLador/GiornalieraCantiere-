@@ -1,108 +1,92 @@
 package com.idroambiente.giornalieradicantiere.ui.theme
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.unit.dp
+import com.idroambiente.giornalieradicantiere.data.preferences.TemaApp
 
-private val LightColorScheme = lightColorScheme(
-    primary = BluePrimary,
-    onPrimary = OnPrimaryLight,
-    primaryContainer = BlueMuted,
-    onPrimaryContainer = OnSurfaceLight,
-    secondary = BlueAccent,
-    onSecondary = OnPrimaryLight,
-    secondaryContainer = BlueLighter,
-    onSecondaryContainer = OnSurfaceLight,
-    tertiary = BlueLight,
-    onTertiary = OnPrimaryDark,
-    tertiaryContainer = BlueMuted,
-    onTertiaryContainer = OnSurfaceLight,
-    background = BackgroundLight,
-    onBackground = OnSurfaceLight,
-    surface = BackgroundLight,
-    onSurface = OnSurfaceLight,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = OnSurfaceVariantLight,
-    outline = OutlineLight,
-    error = ErrorLight,
-    onError = OnErrorLight,
-    errorContainer = ErrorContainerLight,
-    onErrorContainer = OnErrorContainerLight,
-    inverseSurface = SurfaceDark,
-    inverseOnSurface = OnSurfaceDark,
-    inversePrimary = InversePrimaryLight,
-    surfaceTint = BluePrimary,
-    scrim = Color(0xFF000000),
-    outlineVariant = BlueMuted,
-    surfaceContainerLowest = SurfaceContainerLowestLight,
-    surfaceContainerLow = SurfaceContainerLowLight,
-    surfaceContainer = SurfaceContainerLight,
-    surfaceContainerHigh = SurfaceContainerHighLight,
-    surfaceContainerHighest = SurfaceContainerHighestLight
-)
-
-private val DarkColorScheme = darkColorScheme(
-    primary = BluePrimaryDarkTheme,
-    onPrimary = OnPrimaryDark,
-    primaryContainer = BlueMutedDark,
-    onPrimaryContainer = OnSurfaceDark,
-    secondary = BlueAccentDark,
-    onSecondary = OnPrimaryDark,
-    secondaryContainer = BluePrimaryDarkDarkTheme,
-    onSecondaryContainer = OnSurfaceDark,
-    tertiary = BlueLight,
-    onTertiary = OnPrimaryDark,
-    tertiaryContainer = BlueMutedDark,
-    onTertiaryContainer = OnSurfaceDark,
-    background = BackgroundDark,
-    onBackground = OnSurfaceDark,
-    surface = SurfaceDark,
-    onSurface = OnSurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = OnSurfaceVariantDark,
-    outline = OutlineDark,
-    error = ErrorDark,
-    onError = OnErrorDark,
-    errorContainer = ErrorContainerDark,
-    onErrorContainer = OnErrorContainerDark,
-    inverseSurface = BackgroundLight,
-    inverseOnSurface = OnSurfaceLight,
-    inversePrimary = InversePrimaryDark,
-    surfaceTint = BluePrimaryDarkTheme,
-    scrim = Color(0xFF000000),
-    outlineVariant = OutlineDark,
-    surfaceContainerLowest = SurfaceContainerLowestDark,
-    surfaceContainerLow = SurfaceContainerLowDark,
-    surfaceContainer = SurfaceContainerDark,
-    surfaceContainerHigh = SurfaceContainerHighDark,
-    surfaceContainerHighest = SurfaceContainerHighestDark
-)
+/** I componenti Material (dialoghi, campi di testo, date picker) usano gli stessi colori. */
+private fun AppColors.toColorScheme(): ColorScheme {
+    val base = if (isDark) darkColorScheme() else lightColorScheme()
+    return base.copy(
+        primary = pri,
+        onPrimary = onPri,
+        primaryContainer = soft,
+        onPrimaryContainer = ink,
+        secondary = pri,
+        onSecondary = onPri,
+        secondaryContainer = soft,
+        onSecondaryContainer = ink,
+        tertiary = yel,
+        onTertiary = onYel,
+        tertiaryContainer = warnBg,
+        onTertiaryContainer = warn,
+        background = bg,
+        onBackground = ink,
+        surface = card,
+        onSurface = ink,
+        surfaceVariant = soft,
+        onSurfaceVariant = sub,
+        surfaceTint = pri,
+        outline = sub,
+        outlineVariant = line,
+        error = err,
+        onError = if (isDark) bg else card,
+        errorContainer = errBg,
+        onErrorContainer = err,
+        scrim = scrim,
+        surfaceContainerLowest = card,
+        surfaceContainerLow = card,
+        surfaceContainer = dlg,
+        surfaceContainerHigh = dlg,
+        surfaceContainerHighest = soft,
+        inverseSurface = strong,
+        inverseOnSurface = onStrong,
+        inversePrimary = hdrSub
+    )
+}
 
 private val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
+    extraSmall = RoundedCornerShape(6.dp),
     small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(12.dp),
-    large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(24.dp)
+    medium = RoundedCornerShape(10.dp),
+    large = RoundedCornerShape(12.dp),
+    extraLarge = RoundedCornerShape(18.dp)
 )
+
+/** Accesso ai colori dell'app: `AppTheme.colors.pri` */
+object AppTheme {
+    val colors: AppColors
+        @Composable @ReadOnlyComposable
+        get() = LocalAppColors.current
+}
+
+fun TemaApp.isDark(systemDark: Boolean): Boolean = when (this) {
+    TemaApp.SISTEMA -> systemDark
+    TemaApp.CHIARO -> false
+    TemaApp.SCURO -> true
+}
 
 @Composable
 fun GiornalieraDiCantiereTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = AppShapes,
-        content = content
-    )
+    val colors = if (darkTheme) DarkAppColors else LightAppColors
+    CompositionLocalProvider(LocalAppColors provides colors) {
+        MaterialTheme(
+            colorScheme = colors.toColorScheme(),
+            typography = Typography,
+            shapes = AppShapes,
+            content = content
+        )
+    }
 }

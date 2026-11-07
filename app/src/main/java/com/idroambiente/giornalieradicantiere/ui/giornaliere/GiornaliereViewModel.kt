@@ -4,14 +4,17 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraSommario
+import com.idroambiente.giornalieradicantiere.database.dao.ReportEsportatoDao
 import com.idroambiente.giornalieradicantiere.database.entities.Cantiere
 import com.idroambiente.giornalieradicantiere.database.entities.Commessa
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
-import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
 import com.idroambiente.giornalieradicantiere.database.repository.CantiereRepository
 import com.idroambiente.giornalieradicantiere.database.repository.CommessaRepository
 import com.idroambiente.giornalieradicantiere.database.repository.GiornalieraRepository
+import com.idroambiente.giornalieradicantiere.services.RiepilogoExporter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,16 +22,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GiornaliereViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val commessaRepository: CommessaRepository,
     private val cantiereRepository: CantiereRepository,
-    private val giornalieraRepository: GiornalieraRepository
+    private val giornalieraRepository: GiornalieraRepository,
+    private val reportDao: ReportEsportatoDao,
+    private val riepilogoExporter: RiepilogoExporter
 ) : ViewModel() {
 
     companion object {
@@ -45,17 +52,26 @@ class GiornaliereViewModel @Inject constructor(
 
     val giornaliere: StateFlow<List<Giornaliera>> = _cantiereId
         .filterNotNull()
-        .flatMapLatest { cantiereId ->
-            giornalieraRepository.getByCantiereId(cantiereId)
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+        .flatMapLatest { giornalieraRepository.getByCantiereId(it) }
+        .map { list -> list.sortedByDescending { it.data } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    /** Persone e ore di lavoro per ogni giornaliera. */
+    val sommari: StateFlow<Map<Long, GiornalieraSommario>> = _cantiereId
+        .filterNotNull()
+        .flatMapLatest { giornalieraRepository.getSommariByCantiere(it) }
+        .map { list -> list.associateBy { it.giornalieraId } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    /** Report finali rimasti indietro dopo una modifica (aggiornamento non riuscito). */
+    val reportDaAggiornare: StateFlow<Int> = reportDao.countDaAggiornare(commessaId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    private val _aggiornandoReport = MutableStateFlow(false)
+    val aggiornandoReport: StateFlow<Boolean> = _aggiornandoReport.asStateFlow()
+
+    private val _toast = MutableStateFlow<String?>(null)
+    val toast: StateFlow<String?> = _toast.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
@@ -66,83 +82,41 @@ class GiornaliereViewModel @Inject constructor(
 
     private fun loadData() {
         viewModelScope.launch {
-            _isLoading.value = true
             try {
                 val commessa = commessaRepository.getById(commessaId)
                 _commessa.value = commessa
-                Log.d(TAG, "Commessa caricata: ${commessa?.nome}")
-
                 val cantieri = cantiereRepository.getByCommessaId(commessaId).first()
                 if (cantieri.isNotEmpty()) {
                     _cantiereId.value = cantieri.first().id
-                    Log.d(TAG, "Cantiere trovato: ${_cantiereId.value}")
                 } else if (commessa != null) {
-                    val cantiere = Cantiere(
-                        commessaId = commessaId,
-                        nome = commessa.nome.toString().padStart(7, '0'),
-                        indirizzo = commessa.indirizzo
+                    _cantiereId.value = cantiereRepository.insert(
+                        Cantiere(commessaId = commessaId, nome = commessa.nome.toString().padStart(7, '0'), indirizzo = commessa.indirizzo)
                     )
-                    val newCantiereId = cantiereRepository.insert(cantiere)
-                    _cantiereId.value = newCantiereId
-                    Log.d(TAG, "Cantiere creato automaticamente: $newCantiereId")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Errore caricamento dati", e)
-            } finally {
-                _isLoading.value = false
             }
         }
     }
 
-    fun createGiornaliera() {
+    fun riprovaReport() {
+        if (_aggiornandoReport.value) return
         viewModelScope.launch {
-            val cantiereId = _cantiereId.value
-            if (cantiereId == null) {
-                Log.e(TAG, "Impossibile creare giornaliera: cantiereId non disponibile")
-                _errorMessage.value = "Impossibile creare giornaliera: cantiere non disponibile"
-                return@launch
+            _aggiornandoReport.value = true
+            val esito = riepilogoExporter.riprovaDaAggiornare(commessaId)
+            _aggiornandoReport.value = false
+            _toast.value = when {
+                esito.falliti.isEmpty() -> "Report aggiornati: ${esito.aggiornati.size}"
+                else -> "Non riuscito: controlla la connessione e riprova"
             }
-
-            val currentTime = System.currentTimeMillis()
-            
-            // Check for duplicate giornaliera for same cantiere on same day
-            if (giornalieraRepository.existsForCantiereAndDay(cantiereId, currentTime)) {
-                Log.e(TAG, "Giornaliera duplicata: esiste già una giornaliera per questo cantiere in questa data")
-                _errorMessage.value = "Esiste già una giornaliera per questo cantiere in questa data"
-                return@launch
-            }
-
-            Log.d(TAG, "Creazione nuova giornaliera per cantiere: $cantiereId")
-            val giornaliera = Giornaliera(
-                cantiereId = cantiereId,
-                data = currentTime,
-                stato = StatoGiornaliera.BOZZA
-            )
-            val id = giornalieraRepository.insert(giornaliera)
-            Log.d(TAG, "Giornaliera creata con id: $id")
-            _errorMessage.value = null
         }
+    }
+
+    fun toastShown() {
+        _toast.value = null
     }
 
     fun clearError() {
         _errorMessage.value = null
-    }
-
-    fun openGiornaliera(giornalieraId: Long) {
-        Log.d(TAG, "Apertura giornaliera: $giornalieraId")
-    }
-
-    fun generateRiepilogoCommessa() {
-        viewModelScope.launch {
-            Log.d(TAG, "Generazione riepilogo per commessa: $commessaId")
-            _commessa.value?.let { commessa ->
-                Log.d(TAG, "Riepilogo commessa: ${commessa.nome}, Cliente: ${commessa.cliente}")
-                val giornaliereList = giornaliere.value
-                Log.d(TAG, "Numero giornaliere: ${giornaliereList.size}")
-                giornaliereList.forEach { g ->
-                    Log.d(TAG, "  - Giornaliera ${g.id}: data=${g.data}, stato=${g.stato}")
-                }
-            }
-        }
     }
 }

@@ -57,7 +57,6 @@ android {
                 }
                 // Gli screenshot vengono scritti in app/build/screenshots
                 test.systemProperty("roborazzi.test.record", "true")
-                test.systemProperty("roborazzi.record.filePathStrategy", "relativePathFromRoborazziContextOutputDirectory")
             }
         }
     }

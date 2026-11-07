@@ -1,5 +1,8 @@
 package com.idroambiente.giornalieradicantiere.ui.components
 
+import com.idroambiente.giornalieradicantiere.ui.theme.AppText
+import com.idroambiente.giornalieradicantiere.ui.theme.AppTheme
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,7 +37,7 @@ fun AppTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
+            .background(AppTheme.colors.hdr)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
@@ -50,15 +53,15 @@ fun AppTopBar(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Indietro",
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                            tint = AppTheme.colors.onHdr,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                 }
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = AppText.header,
+                    color = AppTheme.colors.onHdr,
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = if (showBack) 0.dp else 16.dp)

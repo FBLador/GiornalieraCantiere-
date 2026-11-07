@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -114,6 +115,18 @@ class RiepilogoCommessaViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+
+    /** Ore di lavoro per giornaliera (per l'elenco). */
+    val oreGiornaliera: StateFlow<Map<Long, Float>> = _cantiereId
+        .filterNotNull()
+        .flatMapLatest { giornalieraRepository.getSommariByCantiere(it) }
+        .map { list -> list.associate { it.giornalieraId to it.oreLavoro } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    fun setPeriodo(start: Long?, end: Long?) {
+        _startDate.value = start
+        _endDate.value = end
+    }
 
     private val _riepilogo = MutableStateFlow(RiepilogoCommessaData())
     val riepilogo: StateFlow<RiepilogoCommessaData> = _riepilogo.asStateFlow()

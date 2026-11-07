@@ -91,6 +91,9 @@ fun AppNavHost(
                 },
                 onNavigateToImpostazioni = {
                     navController.navigate(Routes.IMPOSTAZIONI)
+                },
+                onNavigateToWizard = { cantiereId, giornalieraId ->
+                    navController.navigate(Routes.giornalieraWizard(cantiereId, giornalieraId))
                 }
             )
         }
@@ -118,7 +121,10 @@ fun AppNavHost(
             arguments = listOf(navArgument("commessaId") { type = NavType.LongType })
         ) {
             RiepilogoCommessaScreen(
-                onNavigateBack = { safePopBackStack() }
+                onNavigateBack = { safePopBackStack() },
+                onOpenGiornaliera = { cantiereId, giornalieraId ->
+                    navController.navigate(Routes.giornalieraWizard(cantiereId, giornalieraId))
+                }
             )
         }
 

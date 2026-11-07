@@ -2,41 +2,34 @@ package com.idroambiente.giornalieradicantiere.ui.commesse
 
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Commute
+import androidx.compose.material.icons.filled.Engineering
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -48,492 +41,288 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.idroambiente.giornalieradicantiere.database.entities.Commessa
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
-import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
+import com.idroambiente.giornalieradicantiere.ui.common.Formati
+import com.idroambiente.giornalieradicantiere.ui.components.AppHeader
+import com.idroambiente.giornalieradicantiere.ui.components.AppPanel
+import com.idroambiente.giornalieradicantiere.ui.components.AppSheet
+import com.idroambiente.giornalieradicantiere.ui.components.BigButton
+import com.idroambiente.giornalieradicantiere.ui.components.BottomBar
+import com.idroambiente.giornalieradicantiere.ui.components.FileBox
+import com.idroambiente.giornalieradicantiere.ui.components.InfoBox
+import com.idroambiente.giornalieradicantiere.ui.components.InfoKind
+import com.idroambiente.giornalieradicantiere.ui.components.SectionLabel
+import com.idroambiente.giornalieradicantiere.ui.components.SegItem
+import com.idroambiente.giornalieradicantiere.ui.components.SegmentedControl
+import com.idroambiente.giornalieradicantiere.ui.components.SheetButton
+import com.idroambiente.giornalieradicantiere.ui.components.SheetButtonKind
+import com.idroambiente.giornalieradicantiere.ui.components.SheetIcon
+import com.idroambiente.giornalieradicantiere.ui.components.SheetTitle
+import com.idroambiente.giornalieradicantiere.ui.components.StatusChip
+import com.idroambiente.giornalieradicantiere.ui.components.TextLink
+import com.idroambiente.giornalieradicantiere.ui.theme.AppText
+import com.idroambiente.giornalieradicantiere.ui.theme.AppTheme
 import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
-import com.idroambiente.giornalieradicantiere.ui.giornaliere.StatoGiornalieraChip
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.Calendar
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Filtri rapidi del periodo. */
+enum class FiltroPeriodo { TUTTO, SETTE_GIORNI, MESE, PERIODO }
+
+object Periodi {
+    fun setteGiorni(oggi: Long): Pair<Long, Long> {
+        val inizio = Calendar.getInstance().apply { timeInMillis = Formati.inizioGiorno(oggi); add(Calendar.DAY_OF_MONTH, -6) }.timeInMillis
+        return inizio to Formati.inizioGiorno(oggi)
+    }
+
+    fun meseCorrente(oggi: Long): Pair<Long, Long> {
+        val inizio = Calendar.getInstance().apply { timeInMillis = Formati.inizioGiorno(oggi); set(Calendar.DAY_OF_MONTH, 1) }.timeInMillis
+        val fine = Calendar.getInstance().apply {
+            timeInMillis = inizio; add(Calendar.MONTH, 1); add(Calendar.DAY_OF_MONTH, -1)
+        }.timeInMillis
+        return inizio to fine
+    }
+
+    fun filtro(start: Long?, end: Long?, oggi: Long): FiltroPeriodo = when {
+        start == null && end == null -> FiltroPeriodo.TUTTO
+        start to end == setteGiorni(oggi) -> FiltroPeriodo.SETTE_GIORNI
+        start to end == meseCorrente(oggi) -> FiltroPeriodo.MESE
+        else -> FiltroPeriodo.PERIODO
+    }
+}
+
 @Composable
 fun RiepilogoCommessaScreen(
     viewModel: RiepilogoCommessaViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onOpenGiornaliera: (cantiereId: Long, giornalieraId: Long) -> Unit = { _, _ -> }
 ) {
     val commessa by viewModel.commessa.collectAsState()
     val giornaliere by viewModel.giornaliere.collectAsState()
     val riepilogo by viewModel.riepilogo.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val ore by viewModel.oreGiornaliera.collectAsState()
     val startDate by viewModel.startDate.collectAsState()
     val endDate by viewModel.endDate.collectAsState()
-
-    // PDF export states
-    val pdfExporting by viewModel.pdfExporting.collectAsState()
-    val pdfExportSuccess by viewModel.pdfExportSuccess.collectAsState()
-    val pdfExportError by viewModel.pdfExportError.collectAsState()
-    val showConfigError by viewModel.showConfigError.collectAsState()
-    val showOfflineDialog by viewModel.showOfflineDialog.collectAsState()
-
+    val exporting by viewModel.pdfExporting.collectAsState()
+    val success by viewModel.pdfExportSuccess.collectAsState()
+    val error by viewModel.pdfExportError.collectAsState()
+    val configError by viewModel.showConfigError.collectAsState()
+    val offline by viewModel.showOfflineDialog.collectAsState()
+    val cantiereId by viewModel.cantiereId.collectAsState()
     val context = LocalContext.current
 
-    var showStartDatePicker by remember { mutableStateOf(false) }
-    var showEndDatePicker by remember { mutableStateOf(false) }
+    RiepilogoCommessaContent(
+        commessa = commessa,
+        giornaliere = giornaliere,
+        oreGiornaliera = ore,
+        riepilogo = riepilogo,
+        startDate = startDate,
+        endDate = endDate,
+        oggi = remember { System.currentTimeMillis() },
+        exporting = exporting,
+        success = success,
+        error = error,
+        configError = configError,
+        offline = offline,
+        onBack = onNavigateBack,
+        onPeriodo = viewModel::setPeriodo,
+        onOpenGiornaliera = { g -> cantiereId?.let { onOpenGiornaliera(it, g.id) } },
+        onExport = viewModel::exportPdf,
+        onDismissSuccess = viewModel::dismissExportSuccess,
+        onOpenDrive = { link ->
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
+            viewModel.dismissExportSuccess()
+        },
+        onDismissError = viewModel::dismissExportError,
+        onDismissConfig = viewModel::dismissConfigError,
+        onDismissOffline = viewModel::dismissOfflineDialog
+    )
+}
 
-    val dateFormat = remember { SimpleDateFormat("dd/MM/yy", Locale.ITALY) }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RiepilogoCommessaContent(
+    commessa: Commessa?,
+    giornaliere: List<Giornaliera>,
+    oreGiornaliera: Map<Long, Float>,
+    riepilogo: RiepilogoCommessaData,
+    startDate: Long?,
+    endDate: Long?,
+    oggi: Long,
+    exporting: Boolean,
+    success: PdfExportResult?,
+    error: String?,
+    configError: String?,
+    offline: Boolean,
+    onBack: () -> Unit,
+    onPeriodo: (Long?, Long?) -> Unit,
+    onOpenGiornaliera: (Giornaliera) -> Unit,
+    onExport: () -> Unit,
+    onDismissSuccess: () -> Unit,
+    onOpenDrive: (String) -> Unit,
+    onDismissError: () -> Unit,
+    onDismissConfig: () -> Unit,
+    onDismissOffline: () -> Unit
+) {
+    val c = AppTheme.colors
+    val codice = commessa?.let { formatCommessaNome(it.nome) } ?: ""
+    val filtro = Periodi.filtro(startDate, endDate, oggi)
+    var pickStart by remember { mutableStateOf(false) }
+    var pickEnd by remember { mutableStateOf(false) }
+    val ordinate = giornaliere.sortedByDescending { it.data }
 
-    BackHandler { onNavigateBack() }
-
-    Scaffold(
-        topBar = {
-            AppTopBar(
-                title = "Riepilogo - ${commessa?.let { formatCommessaNome(it.nome) } ?: "Commessa"}",
-                showBack = true,
-                onBackClick = onNavigateBack
-            )
-        }
-    ) { paddingValues ->
-        when {
-            isLoading -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            commessa == null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Commessa non trovata",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+    Box(Modifier.fillMaxSize().background(c.bg)) {
+        Column(Modifier.fillMaxSize()) {
+            AppHeader(title = "Riepilogo $codice", subtitle = commessa?.cliente, onBack = onBack)
+            LazyColumn(
+                Modifier.weight(1f),
+                contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    SegmentedControl(
+                        items = listOf(SegItem("Tutto"), SegItem("7 giorni"), SegItem(Formati.meseCapitalizzato(oggi)), SegItem("Periodo")),
+                        selectedIndex = filtro.ordinal,
+                        height = 48.dp,
+                        onSelect = { i ->
+                            when (FiltroPeriodo.entries[i]) {
+                                FiltroPeriodo.TUTTO -> onPeriodo(null, null)
+                                FiltroPeriodo.SETTE_GIORNI -> Periodi.setteGiorni(oggi).let { onPeriodo(it.first, it.second) }
+                                FiltroPeriodo.MESE -> Periodi.meseCorrente(oggi).let { onPeriodo(it.first, it.second) }
+                                FiltroPeriodo.PERIODO -> pickStart = true
+                            }
+                        }
                     )
                 }
-            }
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(horizontal = 16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Card Dati commessa
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            commessa?.let { c ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = formatCommessaNome(c.nome),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    StatoChip(stato = c.stato)
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
+                if (filtro == FiltroPeriodo.PERIODO) {
+                    item {
+                        AppPanel(padding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Cliente: ${c.cliente}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    "Dal ${startDate?.let { Formati.dataBreve(it) } ?: "inizio"} al ${endDate?.let { Formati.dataBreve(it) } ?: "fine"}",
+                                    style = AppText.itemTitle, color = c.ink, modifier = Modifier.weight(1f)
                                 )
-                                if (c.indirizzo.isNotBlank()) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Indirizzo: ${c.indirizzo}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Button(
-                                    onClick = { viewModel.exportPdf() },
-                                    enabled = !pdfExporting,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    if (pdfExporting) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Esportazione in corso...")
-                                    } else {
-                                        Text("Esporta PDF riepilogo")
-                                    }
-                                }
+                                TextLink("Cambia", { pickStart = true })
                             }
                         }
                     }
-
-                    // Card Giornaliere (totali + elenco)
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Kpi(Icons.Default.Engineering, Formati.ore(riepilogo.totaleOreLavoro), "Ore lavoro", Modifier.weight(1f))
+                        Kpi(Icons.Default.Commute, Formati.ore(riepilogo.totaleOreViaggio), "Ore viaggio", Modifier.weight(1f))
+                        Kpi(Icons.Default.LocalShipping, Formati.km(riepilogo.totaleKm), "Km mezzi", Modifier.weight(1f))
+                    }
+                }
+                item {
+                    SectionLabel(
+                        "${ordinate.size} ${if (ordinate.size == 1) "giornaliera" else "giornaliere"}",
+                        Modifier.padding(start = 4.dp, top = 8.dp)
+                    )
+                }
+                items(ordinate, key = { it.id }) { g ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 60.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(c.card)
+                            .clickable { onOpenGiornaliera(g) }
+                            .padding(start = 14.dp, end = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Giornaliere",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Date filter row
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    DateChip(
-                                        label = "Da",
-                                        date = startDate?.let { dateFormat.format(Date(it)) },
-                                        onClick = { showStartDatePicker = true },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    DateChip(
-                                        label = "A",
-                                        date = endDate?.let { dateFormat.format(Date(it)) },
-                                        onClick = { showEndDatePicker = true },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (startDate != null || endDate != null) {
-                                        IconButton(
-                                            onClick = { viewModel.clearDateFilter() },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Close,
-                                                contentDescription = "Cancella filtro",
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Blocco Totali
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                SummaryItem("Ore Lavoro", formatHours(riepilogo.totaleOreLavoro))
-                                SummaryItem("Ore Viaggio", formatHours(riepilogo.totaleOreViaggio))
-                                SummaryItem("KM mezzi", "${formatKm(riepilogo.totaleKm)} km")
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-                            HorizontalDivider()
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Elenco
-                            Text(
-                                text = "Totale: ${giornaliere.size} giornalier${if (giornaliere.size == 1) "a" else "e"}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            giornaliere.forEach { giornaliera ->
-                                RiepilogoGiornalieraRow(giornaliera = giornaliera)
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                            }
-                        }
+                        Text(Formati.dataLunga(g.data), style = AppText.itemTitle, color = c.ink, modifier = Modifier.weight(1f))
+                        Text("${Formati.ore(oreGiornaliera[g.id] ?: 0f)} h", style = AppText.meta, color = c.sub)
+                        StatusChip(g.stato)
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                if (ordinate.isEmpty()) {
+                    item {
+                        Text(
+                            "Nessuna giornaliera nel periodo",
+                            style = AppText.body, color = c.sub, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(24.dp)
+                        )
+                    }
                 }
             }
+            BottomBar {
+                BigButton(
+                    text = if (exporting) "Esportazione in corso…" else "Esporta PDF riepilogo",
+                    onClick = { if (!exporting) onExport() },
+                    icon = if (exporting) Icons.Default.HourglassTop else Icons.Default.PictureAsPdf,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        AppSheet(visible = success != null, onDismiss = onDismissSuccess) {
+            val s = success ?: return@AppSheet
+            SheetIcon(Icons.Default.PictureAsPdf, c.pri)
+            SheetTitle(if (s.sovrascritto) "Report aggiornato" else "PDF esportato")
+            FileBox(listOf(s.fileName to false, (s.folderName ?: "") to true))
+            if (s.sovrascritto) InfoBox("Sostituito il report con lo stesso nome: nessun doppione.", InfoKind.OK)
+            if (s.csvErrore != null) InfoBox("CSV non salvato: ${s.csvErrore}", InfoKind.WARN, icon = Icons.Default.Error)
+            SheetButton("OK", onDismissSuccess)
+            s.webViewLink?.let { link -> SheetButton("Apri su Drive", { onOpenDrive(link) }, SheetButtonKind.SOFT_PRIMARY, Icons.AutoMirrored.Filled.OpenInNew) }
+        }
+        AppSheet(visible = error != null, onDismiss = onDismissError) {
+            SheetTitle("Errore esportazione", error)
+            SheetButton("OK", onDismissError)
+        }
+        AppSheet(visible = configError != null, onDismiss = onDismissConfig) {
+            SheetIcon(Icons.Default.Settings, c.err)
+            SheetTitle("Configurazione incompleta", configError)
+            SheetButton("OK", onDismissConfig)
+        }
+        AppSheet(visible = offline, onDismiss = onDismissOffline) {
+            SheetIcon(Icons.Default.WifiOff, c.err)
+            SheetTitle("Connessione non disponibile", "Per salvare su Google Drive serve internet. Riprova quando sei online.")
+            SheetButton("OK", onDismissOffline)
         }
     }
 
-    // Start date picker dialog
-    if (showStartDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = startDate)
+    if (pickStart) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = startDate)
         DatePickerDialog(
-            onDismissRequest = { showStartDatePicker = false },
+            onDismissRequest = { pickStart = false },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.setStartDate(datePickerState.selectedDateMillis)
-                    showStartDatePicker = false
-                }) {
-                    Text("OK")
-                }
+                    pickStart = false
+                    onPeriodo(state.selectedDateMillis, endDate)
+                    pickEnd = true
+                }) { Text("Avanti: fine") }
             },
-            dismissButton = {
-                TextButton(onClick = { showStartDatePicker = false }) {
-                    Text("Annulla")
-                }
-            }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    selectedDayContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
-                    todayContentColor = MaterialTheme.colorScheme.primary,
-                    todayDateBorderColor = MaterialTheme.colorScheme.primary
-                )
-            )
-        }
+            dismissButton = { TextButton(onClick = { pickStart = false }) { Text("Annulla") } }
+        ) { DatePicker(state = state, title = { Text("Dal giorno", Modifier.padding(start = 24.dp, top = 16.dp)) }) }
     }
-
-    // End date picker dialog
-    if (showEndDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = endDate)
+    if (pickEnd) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = endDate ?: oggi)
         DatePickerDialog(
-            onDismissRequest = { showEndDatePicker = false },
+            onDismissRequest = { pickEnd = false },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.setEndDate(datePickerState.selectedDateMillis)
-                    showEndDatePicker = false
-                }) {
-                    Text("OK")
-                }
+                    pickEnd = false
+                    onPeriodo(startDate, state.selectedDateMillis)
+                }) { Text("OK") }
             },
-            dismissButton = {
-                TextButton(onClick = { showEndDatePicker = false }) {
-                    Text("Annulla")
-                }
-            }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    selectedDayContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedDayContentColor = MaterialTheme.colorScheme.onPrimary,
-                    todayContentColor = MaterialTheme.colorScheme.primary,
-                    todayDateBorderColor = MaterialTheme.colorScheme.primary
-                )
-            )
-        }
-    }
-
-    // PDF Export Success Dialog
-    pdfExportSuccess?.let { result ->
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissExportSuccess() },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("PDF esportato") },
-            text = {
-                Column {
-                    Text("File: ${result.fileName}")
-                    if (result.folderName != null) {
-                        Text("Cartella: ${result.folderName}")
-                    }
-                }
-            },
-            confirmButton = {
-                if (result.webViewLink != null) {
-                    TextButton(onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(result.webViewLink))
-                        context.startActivity(intent)
-                        viewModel.dismissExportSuccess()
-                    }) {
-                        Text("Apri su Drive")
-                    }
-                }
-                TextButton(onClick = { viewModel.dismissExportSuccess() }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
-
-    // PDF Export Error Dialog
-    pdfExportError?.let { error ->
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissExportError() },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("Errore esportazione") },
-            text = { Text(error) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dismissExportError() }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
-
-    // Config Error Dialog
-    showConfigError?.let { message ->
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissConfigError() },
-            containerColor = MaterialTheme.colorScheme.surface,
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-            },
-            title = { Text("Configurazione incompleta") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dismissConfigError() }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
-
-    // Offline Dialog
-    if (showOfflineDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissOfflineDialog() },
-            containerColor = MaterialTheme.colorScheme.surface,
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.WifiOff,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-            },
-            title = { Text("Connessione non disponibile") },
-            text = { Text("Per esportare su Google Drive è necessaria una connessione a internet. Verifica la connessione e riprova.") },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dismissOfflineDialog() }) {
-                    Text("OK")
-                }
-            }
-        )
+            dismissButton = { TextButton(onClick = { pickEnd = false }) { Text("Annulla") } }
+        ) { DatePicker(state = state, title = { Text("Al giorno", Modifier.padding(start = 24.dp, top = 16.dp)) }) }
     }
 }
 
 @Composable
-private fun DateChip(
-    label: String,
-    date: String?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        modifier = modifier.clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.DateRange,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Column {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = date ?: "Seleziona",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (date != null) MaterialTheme.colorScheme.onSurface
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryItem(
-    label: String,
-    value: String
-) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-@Composable
-private fun RiepilogoGiornalieraRow(
-    giornaliera: Giornaliera
-) {
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
-    val formattedDate = dateFormat.format(Date(giornaliera.data))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = formattedDate,
-            style = MaterialTheme.typography.bodyLarge
-        )
-        StatoGiornalieraChip(stato = giornaliera.stato)
-    }
-}
-
-private fun formatHours(hours: Float): String {
-    return if (hours == hours.toInt().toFloat()) {
-        hours.toInt().toString()
-    } else {
-        String.format(Locale.ITALY, "%.1f", hours)
-    }
-}
-
-private fun formatKm(km: Float): String {
-    return if (km == km.toInt().toFloat()) {
-        km.toInt().toString()
-    } else {
-        String.format(Locale.ITALY, "%.1f", km)
+private fun Kpi(icon: androidx.compose.ui.graphics.vector.ImageVector, value: String, label: String, modifier: Modifier) {
+    val c = AppTheme.colors
+    AppPanel(modifier, padding = PaddingValues(12.dp)) {
+        Icon(icon, contentDescription = null, tint = c.pri)
+        Text(value, style = AppText.valueLarge, color = c.ink, modifier = Modifier.padding(top = 4.dp))
+        Text(label, style = AppText.meta.copy(fontSize = AppText.section.fontSize), color = c.sub)
     }
 }

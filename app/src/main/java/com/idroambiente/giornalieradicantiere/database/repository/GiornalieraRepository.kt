@@ -1,6 +1,7 @@
 package com.idroambiente.giornalieradicantiere.database.repository
 
 import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraDao
+import com.idroambiente.giornalieradicantiere.database.dao.GiornalieraSommario
 import com.idroambiente.giornalieradicantiere.database.entities.Giornaliera
 import com.idroambiente.giornalieradicantiere.database.entities.StatoGiornaliera
 import kotlinx.coroutines.flow.Flow
@@ -51,6 +52,19 @@ class GiornalieraRepository(private val giornalieraDao: GiornalieraDao) {
     }
 
     suspend fun countNotSent(): Int = giornalieraDao.countNotSent()
+
+    fun getSommariByCantiere(cantiereId: Long): Flow<List<GiornalieraSommario>> =
+        giornalieraDao.getSommariByCantiere(cantiereId)
+
+    /** C'è già un'altra giornaliera dello stesso cantiere nello stesso giorno? */
+    suspend fun existsOtherOnDay(cantiereId: Long, date: Long, excludeId: Long): Boolean {
+        val start = normalizeToStartOfDay(date)
+        return giornalieraDao.existsOnDayExcluding(cantiereId, start, start + 86_399_999L, excludeId)
+    }
+
+    /** Ultima giornaliera compilata prima del giorno indicato (esclusa [excludeId]). */
+    suspend fun getLatestCompiledBefore(cantiereId: Long, date: Long, excludeId: Long): Giornaliera? =
+        giornalieraDao.getLatestCompiledBefore(cantiereId, normalizeToStartOfDay(date), excludeId)
 
     private fun normalizeToStartOfDay(timestamp: Long): Long {
         val calendar = Calendar.getInstance().apply {

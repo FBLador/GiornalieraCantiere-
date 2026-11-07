@@ -1,60 +1,76 @@
 package com.idroambiente.giornalieradicantiere.ui.commesse
 
-import android.app.Activity
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.TaskAlt
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import com.idroambiente.giornalieradicantiere.ui.components.AppCard
-import com.idroambiente.giornalieradicantiere.ui.components.AppFAB
-import com.idroambiente.giornalieradicantiere.ui.components.AppTopBar
-import com.idroambiente.giornalieradicantiere.ui.components.PrimaryButton
-import com.idroambiente.giornalieradicantiere.ui.components.SecondaryButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.idroambiente.giornalieradicantiere.database.entities.Commessa
+import com.idroambiente.giornalieradicantiere.R
 import com.idroambiente.giornalieradicantiere.database.entities.StatoCommessa
+import com.idroambiente.giornalieradicantiere.ui.common.Formati
+import com.idroambiente.giornalieradicantiere.ui.common.ui
+import com.idroambiente.giornalieradicantiere.ui.components.AppHeader
+import com.idroambiente.giornalieradicantiere.ui.components.AppPanel
+import com.idroambiente.giornalieradicantiere.ui.components.AppSheet
+import com.idroambiente.giornalieradicantiere.ui.components.BigButton
+import com.idroambiente.giornalieradicantiere.ui.components.BigTextField
+import com.idroambiente.giornalieradicantiere.ui.components.HeaderIconButton
+import com.idroambiente.giornalieradicantiere.ui.components.InfoBox
+import com.idroambiente.giornalieradicantiere.ui.components.InfoKind
+import com.idroambiente.giornalieradicantiere.ui.components.SheetButton
+import com.idroambiente.giornalieradicantiere.ui.components.SheetButtonKind
+import com.idroambiente.giornalieradicantiere.ui.components.SheetTitle
+import com.idroambiente.giornalieradicantiere.ui.components.SoftIconButton
+import com.idroambiente.giornalieradicantiere.ui.components.ToastHost
+import com.idroambiente.giornalieradicantiere.ui.components.ToastState
+import com.idroambiente.giornalieradicantiere.ui.components.rememberToastState
+import com.idroambiente.giornalieradicantiere.ui.theme.AppText
+import com.idroambiente.giornalieradicantiere.ui.theme.AppTheme
 import com.idroambiente.giornalieradicantiere.util.formatCommessaNome
 
 @Composable
@@ -62,313 +78,240 @@ fun CommesseScreen(
     viewModel: CommesseViewModel = hiltViewModel(),
     onNavigateToCommessa: (Long) -> Unit = {},
     onNavigateToRiepilogoCommessa: (Long) -> Unit = {},
-    onNavigateToImpostazioni: () -> Unit = {}
+    onNavigateToImpostazioni: () -> Unit = {},
+    onNavigateToWizard: (cantiereId: Long, giornalieraId: Long?) -> Unit = { _, _ -> }
 ) {
-    val commesse by viewModel.commesse.collectAsState()
-    val showCreateDialog by viewModel.showCreateDialog.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
-    val context = LocalContext.current
-
-    BackHandler {
-        (context as? Activity)?.finish()
+    val cards by viewModel.cards.collectAsState()
+    val showCreate by viewModel.showCreateDialog.collectAsState()
+    val error by viewModel.errorMessage.collectAsState()
+    val toastMsg by viewModel.toast.collectAsState()
+    val toast = rememberToastState()
+    LaunchedEffect(toastMsg) {
+        toastMsg?.let { toast.show(it); viewModel.toastShown() }
     }
 
-    Scaffold(
-        topBar = {
-            AppTopBar(
-                title = "Commesse",
-                actions = {
-                    IconButton(onClick = onNavigateToImpostazioni) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Impostazioni",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            AppFAB(onClick = { viewModel.showCreateDialog() }) {
-                Icon(Icons.Default.Add, contentDescription = "Nuova Commessa")
-            }
-        }
-    ) { paddingValues ->
-        if (commesse.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Nessuna commessa",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Premi + per creare una nuova commessa",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
-                    items(commesse, key = { it.id }) { commessa ->
-                        CommessaItem(
-                            commessa = commessa,
-                            onOpen = {
-                                viewModel.openCommessa(commessa.id)
-                                onNavigateToCommessa(commessa.id)
-                            },
-                            onRiepilogo = { onNavigateToRiepilogoCommessa(commessa.id) }
-                        )
-                    }
-                    item { Spacer(modifier = Modifier.height(80.dp)) }
-                }
-            }
-        }
-
-        if (showCreateDialog) {
-            CreateCommessaDialog(
-                onConfirm = { codice, cliente ->
-                    viewModel.createCommessa(codice, cliente, "")
-                },
-                onDismiss = { viewModel.hideCreateDialog() }
-            )
-        }
-
-        // Error Dialog
-        errorMessage?.let { error ->
-            AlertDialog(
-                onDismissRequest = { viewModel.clearError() },
-                containerColor = MaterialTheme.colorScheme.surface,
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                },
-                title = { Text("Errore") },
-                text = { Text(error) },
-                confirmButton = {
-                    TextButton(onClick = { viewModel.clearError() }) {
-                        Text("OK")
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun CommessaItem(
-    commessa: Commessa,
-    onOpen: () -> Unit,
-    onRiepilogo: () -> Unit
-) {
-    AppCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = null
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .height(48.dp)
-                        .background(MaterialTheme.colorScheme.primary)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = formatCommessaNome(commessa.nome),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Cliente: ${commessa.cliente}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                StatoChip(stato = commessa.stato)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton(onClick = onRiepilogo) {
-                        Text("Riepilogo")
-                    }
-                    PrimaryButton(onClick = onOpen) {
-                        Text("Apri")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StatoChip(stato: StatoCommessa) {
-    val (backgroundColor, textColor) = when (stato) {
-        StatoCommessa.APERTA -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
-        StatoCommessa.SOSPESA -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
-        StatoCommessa.CHIUSA -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
-    ) {
-        Text(
-            text = stato.name,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = textColor
-        )
-    }
-}
-
-@Composable
-fun CreateCommessaDialog(
-    onConfirm: (codice: Int, cliente: String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var codiceParte1 by remember { mutableStateOf("") }  // prime 4 cifre
-    var codiceParte2 by remember { mutableStateOf("") }  // ultime 3 cifre
-    var cliente by remember { mutableStateOf("") }
-
-    val focusManager = LocalFocusManager.current
-    val focusRequester1 = remember { FocusRequester() }
-    val focusRequester2 = remember { FocusRequester() }
-    val focusRequester3 = remember { FocusRequester() }
-
-    // Auto-focus al primo campo all'apertura
-    LaunchedEffect(Unit) {
-        focusRequester1.requestFocus()
-    }
-
-    // Auto-advance: quando codiceParte1 ha 4 cifre, passa a codiceParte2
-    LaunchedEffect(codiceParte1) {
-        if (codiceParte1.length == 4) {
-            focusRequester2.requestFocus()
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = { Text("Nuova Commessa") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = codiceParte1,
-                        onValueChange = { input ->
-                            codiceParte1 = input.filter(Char::isDigit).take(4)
-                        },
-                        label = { Text("Codice") },
-                        placeholder = { Text("0000") },
-                        supportingText = { Text("${codiceParte1.length}/4") },
-                        isError = codiceParte1.isNotEmpty() && codiceParte1.length < 4,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { focusRequester2.requestFocus() }
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .focusRequester(focusRequester1)
-                    )
-                    Text("-", style = MaterialTheme.typography.headlineMedium)
-                    OutlinedTextField(
-                        value = codiceParte2,
-                        onValueChange = { input ->
-                            codiceParte2 = input.filter(Char::isDigit).take(3)
-                        },
-                        label = { Text("Suffisso") },
-                        placeholder = { Text("000") },
-                        supportingText = { Text("${codiceParte2.length}/3") },
-                        isError = codiceParte2.isNotEmpty() && codiceParte2.length < 3,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { focusRequester3.requestFocus() }
-                        ),
-                        modifier = Modifier
-                            .weight(0.75f)
-                            .focusRequester(focusRequester2)
-                    )
-                }
-                OutlinedTextField(
-                    value = cliente,
-                    onValueChange = { cliente = it.take(100) },
-                    label = { Text("Cliente") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (codiceParte1.length == 4 && codiceParte2.length == 3 && cliente.isNotBlank()) {
-                                onConfirm((codiceParte1 + codiceParte2).toInt(), cliente)
-                            }
-                        }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester3)
-                )
+    CommesseContent(
+        cards = cards,
+        oggi = remember { System.currentTimeMillis() },
+        showCreateSheet = showCreate,
+        createError = error,
+        toast = toast,
+        onSettings = onNavigateToImpostazioni,
+        onOpenCommessa = onNavigateToCommessa,
+        onRiepilogo = onNavigateToRiepilogoCommessa,
+        onAzione = { card ->
+            when (val a = card.azione) {
+                is AzioneCommessa.OggiFatta -> viewModel.conCantiere(card.commessa.id) { onNavigateToWizard(it, a.giornaliera.id) }
+                is AzioneCommessa.RiprendiBozza -> viewModel.conCantiere(card.commessa.id) { onNavigateToWizard(it, a.giornaliera.id) }
+                AzioneCommessa.VediGiornaliere -> onNavigateToCommessa(card.commessa.id)
+                AzioneCommessa.CompilaOggi -> viewModel.conCantiere(card.commessa.id) { onNavigateToWizard(it, null) }
             }
         },
-        confirmButton = {
-            PrimaryButton(
-                onClick = { onConfirm((codiceParte1 + codiceParte2).toInt(), cliente) },
-                enabled = codiceParte1.length == 4 && codiceParte2.length == 3 && cliente.isNotBlank(),
-                content = { Text("Crea") }
-            )
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Annulla")
-            }
-        }
+        onNuova = viewModel::showCreateDialog,
+        onDismissNuova = viewModel::hideCreateDialog,
+        onCrea = { codice, cliente -> viewModel.createCommessa(codice, cliente, "") }
     )
 }
 
+data class AzioneUi(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val bg: Color, val fg: Color)
+
+@Composable
+fun AzioneCommessa.ui(): AzioneUi {
+    val c = AppTheme.colors
+    return when (this) {
+        is AzioneCommessa.OggiFatta -> AzioneUi(
+            if (giornaliera.stato.name == "INVIATA") "Oggi inviata" else "Oggi completata",
+            Icons.Default.TaskAlt, c.okBg, c.ok
+        )
+        is AzioneCommessa.RiprendiBozza -> AzioneUi(
+            if (oggi) "Riprendi bozza di oggi" else "Riprendi bozza ${Formati.dataBreve(giornaliera.data)}",
+            Icons.Default.EditNote, c.warnBg, c.warn
+        )
+        AzioneCommessa.VediGiornaliere -> AzioneUi("Vedi giornaliere", Icons.AutoMirrored.Filled.List, c.soft, c.pri)
+        AzioneCommessa.CompilaOggi -> AzioneUi("Compila oggi", Icons.Default.EditCalendar, c.pri, c.onPri)
+    }
+}
+
+@Composable
+fun CommesseContent(
+    cards: List<CommessaCard>,
+    oggi: Long,
+    showCreateSheet: Boolean,
+    createError: String?,
+    toast: ToastState,
+    onSettings: () -> Unit,
+    onOpenCommessa: (Long) -> Unit,
+    onRiepilogo: (Long) -> Unit,
+    onAzione: (CommessaCard) -> Unit,
+    onNuova: () -> Unit,
+    onDismissNuova: () -> Unit,
+    onCrea: (Int, String) -> Unit,
+    initiallyShowChiuse: Boolean = false
+) {
+    val c = AppTheme.colors
+    var showChiuse by rememberSaveable { mutableStateOf(initiallyShowChiuse) }
+    val aperte = cards.filter { it.commessa.stato != StatoCommessa.CHIUSA }
+    val chiuse = cards.filter { it.commessa.stato == StatoCommessa.CHIUSA }
+
+    Box(Modifier.fillMaxSize().background(c.bg)) {
+        Column(Modifier.fillMaxSize()) {
+            AppHeader(
+                title = "Commesse",
+                subtitle = Formati.oggiEsteso(oggi),
+                titleStyle = AppText.headerLarge,
+                leading = {
+                    Image(
+                        painter = painterResource(R.drawable.logo_idroambiente),
+                        contentDescription = "Idroambiente",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(width = 54.dp, height = 42.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                    )
+                },
+                trailing = { HeaderIconButton(Icons.Default.Settings, "Impostazioni", onSettings) }
+            )
+            LazyColumn(
+                Modifier.weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (cards.isEmpty()) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Nessuna commessa", style = AppText.cardTitle, color = c.ink)
+                            Text("Tocca «Nuova commessa» per iniziare", style = AppText.body, color = c.sub)
+                        }
+                    }
+                }
+                items(aperte, key = { it.commessa.id }) { card ->
+                    CommessaCardView(card, onOpenCommessa, onRiepilogo, onAzione)
+                }
+                if (chiuse.isNotEmpty()) {
+                    item(key = "chiuse") {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 54.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(c.soft)
+                                .clickable { showChiuse = !showChiuse }
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(Icons.Default.Inventory2, contentDescription = null, tint = c.sub)
+                            Text("Chiuse (${chiuse.size})", style = AppText.buttonSmall.copy(fontSize = AppText.body.fontSize), color = c.sub, modifier = Modifier.weight(1f))
+                            Icon(if (showChiuse) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = c.sub)
+                        }
+                    }
+                    if (showChiuse) {
+                        items(chiuse, key = { it.commessa.id }) { card ->
+                            AppPanel(onClick = { onOpenCommessa(card.commessa.id) }) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(formatCommessaNome(card.commessa.nome), style = AppText.header, color = c.sub)
+                                        Text(card.commessa.cliente, style = AppText.body, color = c.sub)
+                                    }
+                                    SoftIconButton(Icons.Default.BarChart, "Riepilogo", { onRiepilogo(card.commessa.id) })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Box(Modifier.navigationBarsPadding().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 8.dp)) {
+                BigButton("Nuova commessa", onNuova, icon = Icons.Default.Add, container = c.strong, content = c.onStrong)
+            }
+        }
+
+        ToastHost(toast)
+
+        AppSheet(visible = showCreateSheet, onDismiss = onDismissNuova) {
+            NuovaCommessaSheet(createError, onCrea, onDismissNuova)
+        }
+    }
+}
+
+@Composable
+private fun CommessaCardView(
+    card: CommessaCard,
+    onOpen: (Long) -> Unit,
+    onRiepilogo: (Long) -> Unit,
+    onAzione: (CommessaCard) -> Unit
+) {
+    val c = AppTheme.colors
+    val stato = card.commessa.stato.ui()
+    val azione = card.azione.ui()
+    AppPanel {
+        Column(Modifier.clickable { onOpen(card.commessa.id) }) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(formatCommessaNome(card.commessa.nome), style = AppText.pageTitle, color = c.ink)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Icon(stato.icon, contentDescription = null, tint = stato.color, modifier = Modifier.size(18.dp))
+                    Text(stato.label, style = AppText.metaStrong, color = stato.color)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(card.commessa.cliente, style = AppText.bodyLarge, color = c.sub, modifier = Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${card.numeroGiornaliere}", style = AppText.metaStrong, color = c.sub)
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "giornaliere", tint = c.sub)
+                }
+            }
+        }
+        Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BigButton(
+                text = azione.label,
+                onClick = { onAzione(card) },
+                icon = azione.icon,
+                container = azione.bg,
+                content = azione.fg,
+                height = 58.dp,
+                modifier = Modifier.weight(1f)
+            )
+            SoftIconButton(Icons.Default.BarChart, "Riepilogo commessa", { onRiepilogo(card.commessa.id) }, size = 58.dp)
+        }
+    }
+}
+
+@Composable
+private fun NuovaCommessaSheet(error: String?, onCrea: (Int, String) -> Unit, onAnnulla: () -> Unit) {
+    val c = AppTheme.colors
+    var p1 by rememberSaveable { mutableStateOf("") }
+    var p2 by rememberSaveable { mutableStateOf("") }
+    var cliente by rememberSaveable { mutableStateOf("") }
+    val suffisso = remember { FocusRequester() }
+    val ok = p1.length == 4 && p2.length == 3 && cliente.isNotBlank()
+    val codiceStyle = AppText.sheetTitle.copy(fontSize = AppText.valueLarge.fontSize * 0.86f, letterSpacing = AppText.section.letterSpacing * 2.5f)
+
+    SheetTitle("Nuova commessa")
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        BigTextField(
+            value = p1,
+            onValueChange = {
+                p1 = it.filter(Char::isDigit).take(4)
+                if (p1.length == 4) runCatching { suffisso.requestFocus() }
+            },
+            label = "Codice · ${p1.length}/4",
+            placeholder = "0000",
+            textStyle = codiceStyle,
+            keyboardType = KeyboardType.Number,
+            modifier = Modifier.weight(4f)
+        )
+        Text("–", style = AppText.pageTitle, color = c.sub, modifier = Modifier.padding(bottom = 14.dp))
+        BigTextField(
+            value = p2,
+            onValueChange = { p2 = it.filter(Char::isDigit).take(3) },
+            label = "Suffisso · ${p2.length}/3",
+            placeholder = "000",
+            textStyle = codiceStyle,
+            keyboardType = KeyboardType.Number,
+            modifier = Modifier.weight(3f).focusRequester(suffisso)
+        )
+    }
+    BigTextField(value = cliente, onValueChange = { cliente = it.take(100) }, label = "Cliente", placeholder = "es. Uniacque Bergamo")
+    if (error != null) InfoBox(error, InfoKind.ERROR, icon = Icons.Default.Error)
+    SheetButton("Crea commessa", { if (ok) onCrea((p1 + p2).toInt(), cliente) }, icon = Icons.Default.Add, enabled = ok)
+    SheetButton("Annulla", onAnnulla, SheetButtonKind.SOFT)
+}
